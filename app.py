@@ -304,11 +304,11 @@ def grade_answers():
     return score, correct_count, total_questions
 
 # Email configuration
-# EMAIL_CONFIG = {
-#     'sender_email': os.getenv('SENDER_EMAIL'),
-#     'sender_password': os.getenv('SENDER_PASSWORD'),
-#     'recipient_email': os.getenv('RECIPIENT_EMAIL')
-# }
+EMAIL_CONFIG = {
+    'sender_email': os.getenv('SENDER_EMAIL'),
+    'sender_password': os.getenv('SENDER_PASSWORD'),
+    'recipient_email': os.getenv('RECIPIENT_EMAIL')
+}
 
 def format_time(seconds):
     """Format seconds into a human-readable string"""
@@ -333,34 +333,50 @@ def check_quiz_start():
 
 def send_quiz_results(candidate_info, score, answers):
     try:
-        # Print results to terminal
-        print("\n" + "="*50)
-        print("QUIZ SUBMISSION RESULTS")
-        print("="*50)
-        print(f"\nCandidate Information:")
-        print(f"Name: {candidate_info['name']}")
-        print(f"Email: {candidate_info['email']}")
-        print(f"Phone: {candidate_info['phone']}")
-        print(f"Submission Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"Completion Time: {format_time(stop_timer())}")
-        print(f"\nScore: {score:.1f}%")
-        print("\nAnswers:")
-        
-        # Print answers
+        # Create email message
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_CONFIG['sender_email']
+        msg['To'] = EMAIL_CONFIG['recipient_email']
+        msg['Subject'] = f"Quiz Results - {candidate_info['name']}"
+
+        # Create email body
+        body = f"""
+Quiz Submission Results
+
+Candidate Information:
+Name: {candidate_info['name']}
+Email: {candidate_info['email']}
+Phone: {candidate_info['phone']}
+Submission Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Completion Time: {format_time(stop_timer())}
+
+Score: {score:.1f}%
+
+Answers:
+"""
+        # Add answers to email body
         for key, value in answers.items():
             user_answer = st.session_state.get(key, '')
             is_correct = str(user_answer).strip() == str(value).strip()
-            status = "✅" if is_correct else "❌"
+            status = "✓" if is_correct else "✗"
             if is_correct:
-                print(f"{status} {key}: {value}")
+                body += f"{status} {key}: {value}\n"
             else:
-                print(f"{status} {key}: Your answer: '{user_answer}' | Correct answer: '{value}'")
-        
-        print("\n" + "="*50 + "\n")
+                body += f"{status} {key}: Your answer: '{user_answer}' | Correct answer: '{value}'\n"
+
+        msg.attach(MIMEText(body, 'plain'))
+
+        # Connect to SMTP server and send email
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(EMAIL_CONFIG['sender_email'], EMAIL_CONFIG['sender_password'])
+            server.send_message(msg)
+
+        print("\nEmail sent successfully!")
         return True
-        
+
     except Exception as e:
-        print(f"\nError printing results: {str(e)}")
+        print(f"\nError sending email: {str(e)}")
         return False
 
 # Main title
@@ -584,7 +600,7 @@ with left_col:
                     for error in validation_errors:
                         st.error(error)
                 else:
-                    # If validation passes, proceed with grading
+                    # Grade answers
                     score, correct_count, total_questions = grade_answers()
                     st.session_state.submitted = True
                     
@@ -598,8 +614,11 @@ with left_col:
                     # Stop timer and get completion time
                     completion_time = stop_timer()
                     
-                    # Print results to terminal
-                    send_quiz_results(candidate_info, score, CORRECT_ANSWERS)
+                    # Send email and print results
+                    if send_quiz_results(candidate_info, score, CORRECT_ANSWERS):
+                        st.success("Results have been emailed successfully!")
+                    else:
+                        st.error("There was an error sending the email results.")
                     
                     # Display results in Streamlit
                     st.markdown("## Quiz Results")
