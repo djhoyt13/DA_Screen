@@ -624,16 +624,7 @@ with left_col:
                     st.markdown("## Quiz Results")
                     st.markdown(f"""
                     <div style='background-color: #1E1E1E; padding: 20px; border-radius: 10px; margin: 20px 0;'>
-                        <h3 style='color: #00BFFF;'>Candidate Information</h3>
-                        <p>Name: {candidate_info['name']}</p>
-                        <p>Email: {candidate_info['email']}</p>
-                        <p>Phone: {candidate_info['phone']}</p>
-                        <p>Submission Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-                        <p>Completion Time: {format_time(completion_time)}</p>
-                        
-                        <h3 style='color: #00BFFF; margin-top: 20px;'>Score: {score:.1f}% ({correct_count}/{total_questions} correct)</h3>
-                        
-                        <h3 style='color: #00BFFF; margin-top: 20px;'>Detailed Answers:</h3>
+                        <h3 style='color: #00BFFF;'>Score: {score:.1f}% ({correct_count}/{total_questions} correct)</h3>
                     </div>
                     """, unsafe_allow_html=True)
                     
