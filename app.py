@@ -63,7 +63,7 @@ st.markdown("""
         }
         h2 {
             color: #00CED1 !important;
-            padding-top: 1rem !important;
+            padding-top: 2rem !important;
             padding-bottom: 0.5rem !important;
         }
         h3 {
@@ -127,7 +127,8 @@ st.markdown("""
             font-size: 1.4rem !important;
             line-height: 2.5 !important;
             padding: 0.64rem !important;
-            margin-top: 0.64rem !important;
+            margin-top: 1.28rem !important;
+            margin-bottom: 1.28rem !important;
             background-color: #0E1117 !important;
             border-radius: 8px !important;
         }
@@ -453,6 +454,19 @@ with left_col:
     
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # Move Topics to Review here, before Data Types
+    st.markdown("## Topics to Review")
+    st.markdown("""
+    <div class="topics-list">
+    <ul>
+    <li>🔢  -  Data Types</li>
+    <li>📚  -  Dictionaries</li>
+    <li>✂️  -  String Operations</li>
+    <li>⚡  -  Functions</li>
+    </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
     # Data Types Quiz Section
     st.markdown("## Data Types")
     st.markdown("What is the output of each of the following Python code snippets?:")
@@ -674,17 +688,3 @@ with left_col:
                     st.dataframe(results_df, use_container_width=True)
                     
                     st.success(f"Quiz submitted! Your score: {score:.1f}% ({correct_count}/{total_questions} correct)")
-
-# Right column: Topics to Review
-with right_col:
-    st.markdown("## Topics to Review")
-    st.markdown("""
-    <div class="topics-list">
-    <ul>
-    <li>🔢  -  Data Types</li>
-    <li>📚  -  Dictionaries</li>
-    <li>✂️  -  String Operations</li>
-    <li>⚡  -  Functions</li>
-    </ul>
-    </div>
-    """, unsafe_allow_html=True)
