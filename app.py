@@ -179,6 +179,14 @@ if 'submitted' not in st.session_state:
     st.session_state.submitted = False
 if 'results_df' not in st.session_state:
     st.session_state.results_df = pd.DataFrame()
+if 'start_time' not in st.session_state:
+    st.session_state.start_time = datetime.now()  # Start timer when page loads
+if 'completion_time' not in st.session_state:
+    st.session_state.completion_time = None
+if 'timer_started' not in st.session_state:
+    st.session_state.timer_started = False
+if 'first_quiz_interaction' not in st.session_state:
+    st.session_state.first_quiz_interaction = False
 
 # Define correct answers
 CORRECT_ANSWERS = {
@@ -302,6 +310,27 @@ def grade_answers():
 #     'recipient_email': os.getenv('RECIPIENT_EMAIL')
 # }
 
+def format_time(seconds):
+    """Format seconds into a human-readable string"""
+    minutes = int(seconds // 60)
+    seconds = int(seconds % 60)
+    return f"{minutes} minutes and {seconds} seconds"
+
+def stop_timer():
+    """Stop the quiz timer and calculate completion time"""
+    if st.session_state.completion_time is None:
+        st.session_state.completion_time = datetime.now()
+        return (st.session_state.completion_time - st.session_state.start_time).total_seconds()
+    return 0
+
+def check_quiz_start():
+    """Check if user has started interacting with quiz questions"""
+    if not st.session_state.first_quiz_interaction:
+        for key in CORRECT_ANSWERS.keys():
+            if st.session_state.get(key, '').strip():
+                st.session_state.first_quiz_interaction = True
+                break
+
 def send_quiz_results(candidate_info, score, answers):
     try:
         # Print results to terminal
@@ -313,6 +342,7 @@ def send_quiz_results(candidate_info, score, answers):
         print(f"Email: {candidate_info['email']}")
         print(f"Phone: {candidate_info['phone']}")
         print(f"Submission Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Completion Time: {format_time(stop_timer())}")
         print(f"\nScore: {score:.1f}%")
         print("\nAnswers:")
         
@@ -486,7 +516,6 @@ with left_col:
         st.markdown('<p class="answer-prompt">Answer Below:</p>', unsafe_allow_html=True)
         st.text_input("", placeholder="Enter the output", key="dict1")
         
-
         # String Operations Section
         st.markdown('<div class="str-ops-section">', unsafe_allow_html=True)
         st.markdown("## String Operations")
@@ -524,6 +553,9 @@ with left_col:
         st.markdown('<p class="answer-prompt">Answer Below:</p>', unsafe_allow_html=True)
         st.text_input("", placeholder="Enter the output", key="func2")
         st.markdown('</div>', unsafe_allow_html=True)
+
+        # Check if user has started the quiz
+        check_quiz_start()
 
         # Add submit button
         if not st.session_state.submitted:
@@ -563,6 +595,9 @@ with left_col:
                         'phone': st.session_state.get('phone', '')
                     }
                     
+                    # Stop timer and get completion time
+                    completion_time = stop_timer()
+                    
                     # Print results to terminal
                     send_quiz_results(candidate_info, score, CORRECT_ANSWERS)
                     
@@ -575,6 +610,7 @@ with left_col:
                         <p>Email: {candidate_info['email']}</p>
                         <p>Phone: {candidate_info['phone']}</p>
                         <p>Submission Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                        <p>Completion Time: {format_time(completion_time)}</p>
                         
                         <h3 style='color: #00BFFF; margin-top: 20px;'>Score: {score:.1f}% ({correct_count}/{total_questions} correct)</h3>
                         
