@@ -2,6 +2,14 @@ import streamlit as st
 import re
 import pandas as pd
 from datetime import datetime
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Set page configuration
 st.set_page_config(
@@ -190,12 +198,64 @@ CORRECT_ANSWERS = {
     'func2': '4'
 }
 
+# Define target words for each data type
+DATA_TYPE_TARGETS = {
+    'int': ['int', 'integer', 'whole number'],
+    'float': ['float', 'floating point', 'decimal'],
+    'bool': ['bool', 'boolean', 'true/false'],
+    'str': ['str', 'string', 'text'],
+    'list': ['list', 'array', 'sequence'],
+    'tuple': ['tuple', 'immutable list'],
+    'dict': ['dict', 'dictionary', 'key-value'],
+    'set': ['set', 'unique collection'],
+    'none': ['none', 'none type', 'null']
+}
+
+def levenshtein_distance(s1, s2):
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    return previous_row[-1]
+
+def calculate_similarity(s1, s2):
+    max_len = max(len(s1), len(s2))
+    if max_len == 0:
+        return 1.0
+    distance = levenshtein_distance(s1.lower(), s2.lower())
+    return 1 - (distance / max_len)
+
 def grade_answers():
     # Get all answers from session state
     answers = {key: st.session_state.get(key, '') for key in CORRECT_ANSWERS.keys()}
     
     # Calculate score
-    correct_count = sum(1 for key, value in answers.items() if str(value).strip() == str(CORRECT_ANSWERS[key]).strip())
+    correct_count = 0
+    for key, value in answers.items():
+        if key in DATA_TYPE_TARGETS:
+            # Special handling for data type questions
+            user_answer = str(value).strip().lower()
+            # Calculate similarity with all target words and take the maximum
+            similarities = [
+                calculate_similarity(user_answer, target)
+                for target in DATA_TYPE_TARGETS[key]
+            ]
+            max_similarity = max(similarities)
+            if max_similarity >= 0.8:
+                correct_count += 1
+        else:
+            if str(value).strip() == str(CORRECT_ANSWERS[key]).strip():
+                correct_count += 1
+    
     total_questions = len(CORRECT_ANSWERS)
     score = (correct_count / total_questions) * 100
     
@@ -213,7 +273,16 @@ def grade_answers():
     # Add individual question results
     for key, value in answers.items():
         results[f'q_{key}'] = value
-        results[f'q_{key}_correct'] = str(value).strip() == str(CORRECT_ANSWERS[key]).strip()
+        if key in DATA_TYPE_TARGETS:
+            user_answer = str(value).strip().lower()
+            similarities = [
+                calculate_similarity(user_answer, target)
+                for target in DATA_TYPE_TARGETS[key]
+            ]
+            max_similarity = max(similarities)
+            results[f'q_{key}_correct'] = max_similarity >= 0.8
+        else:
+            results[f'q_{key}_correct'] = str(value).strip() == str(CORRECT_ANSWERS[key]).strip()
     
     # Create DataFrame row
     new_row = pd.DataFrame([results])
@@ -225,6 +294,44 @@ def grade_answers():
     st.session_state.results_df.to_csv('quiz_results.csv', index=False)
     
     return score, correct_count, total_questions
+
+# Email configuration
+# EMAIL_CONFIG = {
+#     'sender_email': os.getenv('SENDER_EMAIL'),
+#     'sender_password': os.getenv('SENDER_PASSWORD'),
+#     'recipient_email': os.getenv('RECIPIENT_EMAIL')
+# }
+
+def send_quiz_results(candidate_info, score, answers):
+    try:
+        # Print results to terminal
+        print("\n" + "="*50)
+        print("QUIZ SUBMISSION RESULTS")
+        print("="*50)
+        print(f"\nCandidate Information:")
+        print(f"Name: {candidate_info['name']}")
+        print(f"Email: {candidate_info['email']}")
+        print(f"Phone: {candidate_info['phone']}")
+        print(f"Submission Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"\nScore: {score:.1f}%")
+        print("\nAnswers:")
+        
+        # Print answers
+        for key, value in answers.items():
+            user_answer = st.session_state.get(key, '')
+            is_correct = str(user_answer).strip() == str(value).strip()
+            status = "✅" if is_correct else "❌"
+            if is_correct:
+                print(f"{status} {key}: {value}")
+            else:
+                print(f"{status} {key}: Your answer: '{user_answer}' | Correct answer: '{value}'")
+        
+        print("\n" + "="*50 + "\n")
+        return True
+        
+    except Exception as e:
+        print(f"\nError printing results: {str(e)}")
+        return False
 
 # Main title
 st.title("Data Analyst Python Review")
@@ -448,18 +555,79 @@ with left_col:
                     # If validation passes, proceed with grading
                     score, correct_count, total_questions = grade_answers()
                     st.session_state.submitted = True
-                    st.success(f"Quiz submitted! Your score: {score:.1f}% ({correct_count}/{total_questions} correct)")
                     
-                    # Display correct answers
-                    st.markdown("### Quiz Results:")
+                    # Send email with results
+                    candidate_info = {
+                        'name': st.session_state.get('name', ''),
+                        'email': st.session_state.get('email', ''),
+                        'phone': st.session_state.get('phone', '')
+                    }
+                    
+                    # Print results to terminal
+                    send_quiz_results(candidate_info, score, CORRECT_ANSWERS)
+                    
+                    # Display results in Streamlit
+                    st.markdown("## Quiz Results")
+                    st.markdown(f"""
+                    <div style='background-color: #1E1E1E; padding: 20px; border-radius: 10px; margin: 20px 0;'>
+                        <h3 style='color: #00BFFF;'>Candidate Information</h3>
+                        <p>Name: {candidate_info['name']}</p>
+                        <p>Email: {candidate_info['email']}</p>
+                        <p>Phone: {candidate_info['phone']}</p>
+                        <p>Submission Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                        
+                        <h3 style='color: #00BFFF; margin-top: 20px;'>Score: {score:.1f}% ({correct_count}/{total_questions} correct)</h3>
+                        
+                        <h3 style='color: #00BFFF; margin-top: 20px;'>Detailed Answers:</h3>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Display answers in a table format
+                    results_data = []
                     for key, value in CORRECT_ANSWERS.items():
                         user_answer = st.session_state.get(key, '')
-                        is_correct = str(user_answer).strip() == str(value).strip()
-                        status = "✅" if is_correct else "❌"
-                        if is_correct:
-                            st.markdown(f"{status} {key}: {value}")
+                        if key in DATA_TYPE_TARGETS:
+                            user_answer_lower = str(user_answer).strip().lower()
+                            similarities = [
+                                calculate_similarity(user_answer_lower, target)
+                                for target in DATA_TYPE_TARGETS[key]
+                            ]
+                            max_similarity = max(similarities)
+                            is_correct = max_similarity >= 0.8
                         else:
-                            st.markdown(f"{status} {key}: Your answer: '{user_answer}' | Correct answer: '{value}'")
+                            is_correct = str(user_answer).strip() == str(value).strip()
+                        status = "✅" if is_correct else "❌"
+                        results_data.append({
+                            "Question": key,
+                            "Your Answer": user_answer,
+                            "Correct Answer": value,
+                            "Status": status
+                        })
+                    
+                    # Create DataFrame for results
+                    results_df = pd.DataFrame(results_data)
+                    
+                    # Display results table with custom styling
+                    st.markdown("""
+                        <style>
+                            .stDataFrame {
+                                background-color: #1E1E1E;
+                                border-radius: 10px;
+                                padding: 10px;
+                            }
+                            .stDataFrame td {
+                                color: #FFFFFF;
+                            }
+                            .stDataFrame th {
+                                color: #00BFFF;
+                                font-weight: bold;
+                            }
+                        </style>
+                    """, unsafe_allow_html=True)
+                    
+                    st.dataframe(results_df, use_container_width=True)
+                    
+                    st.success(f"Quiz submitted! Your score: {score:.1f}% ({correct_count}/{total_questions} correct)")
 
 # Right column: Topics to Review
 with right_col:
@@ -467,11 +635,10 @@ with right_col:
     st.markdown("""
     <div class="topics-list">
     <ul>
-    <li>📊  -  Data Types and Variables</li>
-    <li>📝  -  Lists and Dictionaries</li>
-    <li>⚙️  -  Functions and Modules</li>
-    <li>🐼  -  Data Manipulation with Pandas</li>
-    <li>📈  -  Data Visualization with Matplotlib and Seaborn</li>
+    <li>🔢  -  Data Types</li>
+    <li>📚  -  Dictionaries</li>
+    <li>✂️  -  String Operations</li>
+    <li>⚡  -  Functions</li>
     </ul>
     </div>
     """, unsafe_allow_html=True)
