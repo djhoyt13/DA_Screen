@@ -506,7 +506,7 @@ with left_col:
         # Integer
         st.code("x = 42\ntype(x)")
         st.markdown('<p class="answer-prompt">Answer Below:</p>', unsafe_allow_html=True)
-        st.text_input("", placeholder="Define Integer (int)", key="int")
+        st.text_input("", key="int")
         
         # Float
         st.code("x = 3.14\ntype(x)")
