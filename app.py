@@ -506,47 +506,47 @@ with left_col:
         # Integer
         st.code("x = 42\ntype(x)")
         st.markdown('<p class="answer-prompt">Answer Below:</p>', unsafe_allow_html=True)
-        st.text_input("", key="int")
+        st.text_input("", placeholder="Enter the output", key="int")
         
         # Float
         st.code("x = 3.14\ntype(x)")
         st.markdown('<p class="answer-prompt">Answer Below:</p>', unsafe_allow_html=True)
-        st.text_input("", key="float")
+        st.text_input("", placeholder="Enter the output", key="float")
         
         # Boolean
         st.code("x = True\ntype(x)")
         st.markdown('<p class="answer-prompt">Answer Below:</p>', unsafe_allow_html=True)
-        st.text_input("", key="bool")
+        st.text_input("", placeholder="Enter the output", key="bool")
         
         # String
         st.code('x = "Hello"\ntype(x)')
         st.markdown('<p class="answer-prompt">Answer Below:</p>', unsafe_allow_html=True)
-        st.text_input("", key="str")
+        st.text_input("", placeholder="Enter the output", key="str")
         
         # NoneType
         st.code("x = None\ntype(x)")
         st.markdown('<p class="answer-prompt">Answer Below:</p>', unsafe_allow_html=True)
-        st.text_input("", key="none")
+        st.text_input("", placeholder="Enter the output", key="none")
         
         # List
         st.code("x = [1, 2, 3]\ntype(x)")
         st.markdown('<p class="answer-prompt">Answer Below:</p>', unsafe_allow_html=True)
-        st.text_input("", key="list")
+        st.text_input("", placeholder="Enter the output", key="list")
         
         # Tuple
         st.code("x = (1, 2, 3)\ntype(x)")
         st.markdown('<p class="answer-prompt">Answer Below:</p>', unsafe_allow_html=True)
-        st.text_input("", key="tuple")
+        st.text_input("", placeholder="Enter the output", key="tuple")
         
         # Dictionary
         st.code("x = {'a': 1, 'b': 2}\ntype(x)")
         st.markdown('<p class="answer-prompt">Answer Below:</p>', unsafe_allow_html=True)
-        st.text_input("", key="dict")
+        st.text_input("", placeholder="Enter the output", key="dict")
         
         # Set
         st.code("x = {1, 2, 3}\ntype(x)")
         st.markdown('<p class="answer-prompt">Answer Below:</p>', unsafe_allow_html=True)
-        st.text_input("", key="set")
+        st.text_input("", placeholder="Enter the output", key="set")
 
         # Dictionary Operations Section
         st.markdown('<div class="dict-ops-section">', unsafe_allow_html=True)
