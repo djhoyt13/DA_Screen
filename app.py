@@ -337,7 +337,7 @@ def send_quiz_results(candidate_info, score, answers):
         # Create email message
         msg = MIMEMultipart()
         msg['From'] = EMAIL_CONFIG['sender_email']
-        msg['To'] = EMAIL_CONFIG['recipient_email']
+        msg['To'] = st.session_state.recruiter_email  # Use recruiter's email instead of RECIPIENT_EMAIL
         msg['Subject'] = f"Quiz Results - {candidate_info['name']}"
 
         # Create email body
@@ -451,6 +451,24 @@ with left_col:
     if st.session_state.phone_error:
         st.markdown('</div>', unsafe_allow_html=True)
         st.error("Please enter a valid phone number (10-14 digits, can include country code)")
+    
+    # Recruiter Email input with validation
+    if 'recruiter_email' not in st.session_state:
+        st.session_state.recruiter_email = ""
+        st.session_state.recruiter_email_error = False
+    
+    def validate_recruiter_email():
+        if st.session_state.recruiter_email and not is_valid_email(st.session_state.recruiter_email):
+            st.session_state.recruiter_email_error = True
+        else:
+            st.session_state.recruiter_email_error = False
+    
+    if st.session_state.recruiter_email_error:
+        st.markdown('<div class="invalid-input">', unsafe_allow_html=True)
+    recruiter_email = st.text_input("Recruiter's Email:", key="recruiter_email", on_change=validate_recruiter_email)
+    if st.session_state.recruiter_email_error:
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.error("Please enter a valid email address")
     
     st.markdown('</div>', unsafe_allow_html=True)
 
