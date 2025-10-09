@@ -381,12 +381,12 @@ Answers:
         return False
 
 # Main title
-st.title("Data Analyst Python Review")
+st.title("Data Scientist Technical Review")
 
 # Add a welcome message with markdown formatting
 st.markdown("""
 <div class="welcome-msg">
-Welcome to the Data Analyst Python Review. This review will emphasize the core Python concepts relevant to the Data Analyst position.
+Welcome to the Data Scientist Technical Review. This review will emphasize the core Python concepts relevant to the Data Scientist position.
 </div>
 """, unsafe_allow_html=True)
 
@@ -646,11 +646,20 @@ with left_col:
                     # Stop timer and get completion time
                     completion_time = stop_timer()
                     
-                    # Send email and print results
-                    if send_quiz_results(candidate_info, score, CORRECT_ANSWERS):
-                        st.success("Results have been emailed successfully!")
+                    # Send email and print results (only if email is configured)
+                    email_configured = all([
+                        EMAIL_CONFIG.get('sender_email'),
+                        EMAIL_CONFIG.get('sender_password'),
+                        st.session_state.get('recruiter_email')
+                    ])
+                    
+                    if email_configured:
+                        if send_quiz_results(candidate_info, score, CORRECT_ANSWERS):
+                            st.success("Results have been emailed successfully!")
+                        else:
+                            st.warning("There was an error sending the email, but your results have been saved.")
                     else:
-                        st.error("There was an error sending the email results.")
+                        st.info("Email not configured. Results saved locally to quiz_results.csv")
                     
                     # Display results in Streamlit
                     st.markdown("## Quiz Results")
