@@ -1,17 +1,7 @@
-from pydantic import BaseModel
+def is_even(n):
+    """Return True if n is even, otherwise False."""
+    return n % 2 == 0
 
-class User(BaseModel):
-    name: str
-    email: str
-    age: int | None = None
-
-sample_data = {
-    "name": "John Doe",
-    "email": 1234
-}
-
-try:
-    user = User(**sample_data)
-    print(user.name)
-except:
-    print("Data is not valid")
+def test_is_even():
+    assert is_even(4) is True
+    assert is_even(5) is False

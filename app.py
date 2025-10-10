@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
 from dotenv import load_dotenv
+import styles
 
 # Load environment variables
 load_dotenv()
@@ -34,146 +35,8 @@ def is_valid_phone(phone):
     phone = re.sub(r'[\s\-\(\)]', '', phone)  # Remove spaces, hyphens, and parentheses
     return bool(re.match(r'^\+?1?\d{10,14}$', phone)) if phone else False
 
-# Set dark theme and improve text visibility
-st.markdown("""
-    <style>
-        /* Dark mode for main app and header */
-        .stApp {
-            background-color: #0E1117;
-            color: #FFFFFF;
-        }
-        /* Style header/banner area */
-        header {
-            background-color: #0E1117 !important;
-        }
-        .stDeployButton {
-            display: none !important;
-        }
-        /* Hide hamburger menu */
-        button[kind="header"] {
-            background-color: transparent !important;
-            color: #FFFFFF !important;
-        }
-        .main .block-container {
-            padding-top: 2rem;
-        }
-        h1 {
-            color: #00BFFF !important;
-            font-weight: bold !important;
-        }
-        h2 {
-            color: #00CED1 !important;
-            padding-top: 2rem !important;
-            padding-bottom: 0.5rem !important;
-        }
-        h3 {
-            color: #00CED1 !important;
-            font-size: 1.5rem !important;
-            font-weight: bold !important;
-            padding-top: 1rem !important;
-            padding-bottom: 0.5rem !important;
-        }
-        .stTextInput > div > div > input {
-            color: #FFFFFF;
-            background-color: #262730;
-        }
-        /* Style for shorter input fields */
-        .short-input {
-            max-width: 400px !important;
-        }
-        div[data-testid="stHorizontalBlock"] > div:first-child {
-            flex: 0 1 400px !important;
-        }
-        p {
-            color: #E0E0E0 !important;
-            font-size: 1.05rem !important;
-            line-height: 1.5 !important;
-        }
-        .welcome-msg {
-            font-size: 1.5rem !important;
-            color: #E0E0E0 !important;
-            margin: 2rem 0 !important;
-            line-height: 1.8 !important;
-            padding: 1rem !important;
-            border-left: 4px solid #00BFFF !important;
-            background-color: rgba(0, 191, 255, 0.1) !important;
-        }
-        /* Additional dark mode for all Streamlit elements */
-        .stMarkdown, .stHeader, .stSidebar, .stButton, .stTextInput {
-            background-color: #0E1117 !important;
-            color: #FFFFFF !important;
-        }
-        /* Style for Answer Below text */
-        .answer-prompt {
-            color: #00CED1 !important;
-            font-size: 1.1rem !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            line-height: 1 !important;
-            font-style: italic !important;
-        }
-        /* Style for code and input spacing */
-        .stCodeBlock {
-            margin-bottom: 0.125rem !important;
-            max-width: 400px !important;
-        }
-        .stTextInput {
-            margin-top: 0 !important;
-            margin-bottom: 0.75rem !important;
-            padding-top: 0 !important;
-        }
-        /* Style for Topics list */
-        .topics-list {
-            font-size: 1.4rem !important;
-            line-height: 2.5 !important;
-            padding: 0.64rem !important;
-            margin-top: 1.28rem !important;
-            margin-bottom: 1.28rem !important;
-            background-color: #0E1117 !important;
-            border-radius: 8px !important;
-        }
-        /* Style for Dictionary Operations section */
-        .dict-ops-section {
-            padding-top: 2rem !important;
-        }
-        /* Style for String Operations section */
-        .str-ops-section {
-            padding-top: 2rem !important;
-        }
-        /* Style for Functions section */
-        .func-section {
-            padding-top: 2rem !important;
-        }
-        .topics-list ul {
-            list-style-type: none !important;
-            padding-left: 0 !important;
-        }
-        .topics-list li {
-            margin-bottom: 0.432rem !important;
-        }
-        /* Style for Candidate Information */
-        .candidate-info {
-            padding: 1.005rem !important;
-            background-color: #0E1117 !important;
-            border-radius: 8px !important;
-            margin-top: 1rem !important;
-        }
-        /* Style for input field spacing */
-        .candidate-info .stTextInput {
-            margin-bottom: 3.5rem !important;
-        }
-        /* Remove extra margin from the last input field */
-        .candidate-info .stTextInput:last-child {
-            margin-bottom: 0.5rem !important;
-        }
-        .invalid-input {
-            border: 1px solid red;
-            padding: 0.5rem;
-            border-radius: 4px;
-            background-color: rgba(255, 0, 0, 0.1);
-        }
-    </style>
-""", unsafe_allow_html=True)
+# Use the CSS in Streamlit
+st.markdown(styles.css, unsafe_allow_html=True)
 
 # Initialize session state for storing answers and results
 if 'submitted' not in st.session_state:
@@ -189,199 +52,47 @@ if 'timer_started' not in st.session_state:
 if 'first_quiz_interaction' not in st.session_state:
     st.session_state.first_quiz_interaction = False
 
-# Define correct answers
-CORRECT_ANSWERS = {
-    'int': 'int',
-    'float': 'float',
-    'bool': 'bool',
-    'str': 'str',
-    'none': 'NoneType',
-    'list': 'list',
-    'tuple': 'tuple',
-    'dict': 'dict',
-    'set': 'set',
-    'dict1': '5',
-    'str1': 'nal',
-    'str2': 'n',
-    'func1': 'Not an even number',
-    'func2': '4'
-}
+def load_questions_and_answers(md_path):
+    questions = {}
+    answers = {}
+    current_section = None
 
-# Define target words for each data type
-DATA_TYPE_TARGETS = {
-    'int': ['int', 'integer', 'whole number'],
-    'float': ['float', 'floating point', 'decimal'],
-    'bool': ['bool', 'boolean', 'true/false'],
-    'str': ['str', 'string', 'text'],
-    'list': ['list', 'array', 'sequence'],
-    'tuple': ['tuple', 'immutable list'],
-    'dict': ['dict', 'dictionary', 'key-value'],
-    'set': ['set', 'unique collection'],
-    'none': ['none', 'none type', 'null']
-}
+    with open(md_path, 'r') as file:
+        content = file.readlines()
 
-def levenshtein_distance(s1, s2):
-    if len(s1) < len(s2):
-        return levenshtein_distance(s2, s1)
-    if len(s2) == 0:
-        return len(s1)
-    previous_row = range(len(s2) + 1)
-    for i, c1 in enumerate(s1):
-        current_row = [i + 1]
-        for j, c2 in enumerate(s2):
-            insertions = previous_row[j + 1] + 1
-            deletions = current_row[j] + 1
-            substitutions = previous_row[j] + (c1 != c2)
-            current_row.append(min(insertions, deletions, substitutions))
-        previous_row = current_row
-    return previous_row[-1]
+    for line in content:
+        line = line.strip()
+        if line.startswith('## '):
+            current_section = line.strip('## ').strip()
+            questions[current_section] = []
+            answers[current_section] = []
+        elif line.startswith('# Answer Key'):
+            break
+        elif current_section:
+            questions[current_section].append(line)
 
-def calculate_similarity(s1, s2):
-    max_len = max(len(s1), len(s2))
-    if max_len == 0:
-        return 1.0
-    distance = levenshtein_distance(s1.lower(), s2.lower())
-    return 1 - (distance / max_len)
+    # Fill answers, assuming they start after '# Answer Key'
+    answer_start = content.index('# Answer Key\n')
+    parsing_answers = False
+    for line in content[answer_start:]:
+        if line.startswith('## '):
+            parsing_answers = True
+            current_section = line.strip('## ').strip()
+        elif parsing_answers and current_section:
+            answers[current_section].append(line.strip())
 
-def grade_answers():
-    # Get all answers from session state
-    answers = {key: st.session_state.get(key, '') for key in CORRECT_ANSWERS.keys()}
-    
-    # Calculate score
-    correct_count = 0
-    for key, value in answers.items():
-        if key in DATA_TYPE_TARGETS:
-            # Special handling for data type questions
-            user_answer = str(value).strip().lower()
-            # Calculate similarity with all target words and take the maximum
-            similarities = [
-                calculate_similarity(user_answer, target)
-                for target in DATA_TYPE_TARGETS[key]
-            ]
-            max_similarity = max(similarities)
-            if max_similarity >= 0.8:
-                correct_count += 1
-        else:
-            if str(value).strip() == str(CORRECT_ANSWERS[key]).strip():
-                correct_count += 1
-    
-    total_questions = len(CORRECT_ANSWERS)
-    score = (correct_count / total_questions) * 100
-    
-    # Create results dictionary
-    results = {
-        'timestamp': datetime.now(),
-        'name': st.session_state.get('name', ''),
-        'email': st.session_state.get('email', ''),
-        'phone': st.session_state.get('phone', ''),
-        'score': score,
-        'correct_answers': correct_count,
-        'total_questions': total_questions
-    }
-    
-    # Add individual question results
-    for key, value in answers.items():
-        results[f'q_{key}'] = value
-        if key in DATA_TYPE_TARGETS:
-            user_answer = str(value).strip().lower()
-            similarities = [
-                calculate_similarity(user_answer, target)
-                for target in DATA_TYPE_TARGETS[key]
-            ]
-            max_similarity = max(similarities)
-            results[f'q_{key}_correct'] = max_similarity >= 0.8
-        else:
-            results[f'q_{key}_correct'] = str(value).strip() == str(CORRECT_ANSWERS[key]).strip()
-    
-    # Create DataFrame row
-    new_row = pd.DataFrame([results])
-    
-    # Append to existing results
-    st.session_state.results_df = pd.concat([st.session_state.results_df, new_row], ignore_index=True)
-    
-    # Save to CSV
-    st.session_state.results_df.to_csv('quiz_results.csv', index=False)
-    
-    return score, correct_count, total_questions
+    return questions, answers
 
-# Email configuration
-EMAIL_CONFIG = {
-    'sender_email': os.getenv('SENDER_EMAIL'),
-    'sender_password': os.getenv('SENDER_PASSWORD'),
-    'recipient_email': os.getenv('RECIPIENT_EMAIL')
-}
+# Load questions and answers
+questions, answers = load_questions_and_answers('ds_questions.md')
 
-def format_time(seconds):
-    """Format seconds into a human-readable string"""
-    minutes = int(seconds // 60)
-    seconds = int(seconds % 60)
-    return f"{minutes} minutes and {seconds} seconds"
-
-def stop_timer():
-    """Stop the quiz timer and calculate completion time"""
-    if st.session_state.completion_time is None:
-        st.session_state.completion_time = datetime.now()
-        return (st.session_state.completion_time - st.session_state.start_time).total_seconds()
-    return 0
-
-def check_quiz_start():
-    """Check if user has started interacting with quiz questions"""
-    if not st.session_state.first_quiz_interaction:
-        for key in CORRECT_ANSWERS.keys():
-            if st.session_state.get(key, '').strip():
-                st.session_state.first_quiz_interaction = True
-                break
-
-def send_quiz_results(candidate_info, score, answers):
-    try:
-        # Create email message
-        msg = MIMEMultipart()
-        msg['From'] = EMAIL_CONFIG['sender_email']
-        msg['To'] = st.session_state.recruiter_email  # Use recruiter's email instead of RECIPIENT_EMAIL
-        msg['Subject'] = f"Quiz Results - {candidate_info['name']}"
-
-        # Create email body
-        body = f"""
-Quiz Submission Results
-
-Candidate Information:
-Name: {candidate_info['name']}
-Email: {candidate_info['email']}
-Phone: {candidate_info['phone']}
-Submission Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-Completion Time: {format_time(stop_timer())}
-
-Score: {score:.1f}%
-
-Answers:
-"""
-        # Add answers to email body
-        for key, value in answers.items():
-            user_answer = st.session_state.get(key, '')
-            is_correct = str(user_answer).strip() == str(value).strip()
-            status = "✓" if is_correct else "✗"
-            if is_correct:
-                body += f"{status} {key}: {value}\n"
-            else:
-                body += f"{status} {key}: Your answer: '{user_answer}' | Correct answer: '{value}'\n"
-
-        msg.attach(MIMEText(body, 'plain'))
-
-        # Connect to SMTP server and send email
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()
-            server.login(EMAIL_CONFIG['sender_email'], EMAIL_CONFIG['sender_password'])
-            server.send_message(msg)
-
-        print("\nEmail sent successfully!")
-        return True
-
-    except Exception as e:
-        print(f"\nError sending email: {str(e)}")
-        return False
-
-# Main title
 st.title("Data Scientist Technical Review")
+
+# Example for using questions within Streamlit sections
+for section, question_list in questions.items():
+    st.header(section)
+    for question in question_list:
+        st.markdown(question)
 
 # Add a welcome message with markdown formatting
 st.markdown("""
