@@ -177,17 +177,23 @@ css = """
     div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover {
         background-color: rgba(255, 255, 255, 0.05) !important;
     }
-    /* Style for primary button - blue */
-    button[kind="primary"] {
+    /* Style for primary button - blue (multiple selectors for compatibility) */
+    button[kind="primary"],
+    button[data-testid="baseButton-primary"],
+    .stButton > button[kind="primary"] {
         background-color: #0066CC !important;
         border-color: #0066CC !important;
         color: #FFFFFF !important;
     }
-    button[kind="primary"]:hover {
+    button[kind="primary"]:hover,
+    button[data-testid="baseButton-primary"]:hover,
+    .stButton > button[kind="primary"]:hover {
         background-color: #0052A3 !important;
         border-color: #0052A3 !important;
     }
-    button[kind="primary"]:active {
+    button[kind="primary"]:active,
+    button[data-testid="baseButton-primary"]:active,
+    .stButton > button[kind="primary"]:active {
         background-color: #003D7A !important;
         border-color: #003D7A !important;
     }
