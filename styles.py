@@ -78,7 +78,20 @@ css = """
     /* Style for code and input spacing */
     .stCodeBlock {
         margin-bottom: 0.125rem !important;
-        max-width: 400px !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    /* Ensure code blocks preserve whitespace */
+    .stCodeBlock pre {
+        white-space: pre !important;
+        font-family: monospace !important;
+        tab-size: 4 !important;
+        -moz-tab-size: 4 !important;
+    }
+    
+    /* Ensure proper line height in code blocks */
+    .stCodeBlock code {
+        line-height: 1.5 !important;
     }
     .stTextInput {
         margin-top: 0 !important;
@@ -134,6 +147,65 @@ css = """
         padding: 0.5rem;
         border-radius: 4px;
         background-color: rgba(255, 0, 0, 0.1);
+    }
+    /* Style for radio buttons - blue */
+    /* Radio button outer circle */
+    div[data-testid="stRadio"] label div[role="radio"] {
+        border-color: #888888 !important;
+    }
+    /* Radio button outer circle when selected */
+    div[data-testid="stRadio"] label div[role="radio"][aria-checked="true"] {
+        border-color: #0066CC !important;
+    }
+    /* Radio button inner dot/fill when selected */
+    div[data-testid="stRadio"] label div[role="radio"][aria-checked="true"]::after {
+        background-color: #0066CC !important;
+        content: "" !important;
+        display: block !important;
+        width: 10px !important;
+        height: 10px !important;
+        border-radius: 50% !important;
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+    }
+    /* Remove blue highlight from radio button labels */
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label {
+        background-color: transparent !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+    }
+    /* Style for primary button - blue */
+    button[kind="primary"] {
+        background-color: #0066CC !important;
+        border-color: #0066CC !important;
+        color: #FFFFFF !important;
+    }
+    button[kind="primary"]:hover {
+        background-color: #0052A3 !important;
+        border-color: #0052A3 !important;
+    }
+    button[kind="primary"]:active {
+        background-color: #003D7A !important;
+        border-color: #003D7A !important;
+    }
+    /* Fixed progress bar at top using Streamlit native widget */
+    div[data-testid="stProgress"] {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 1000 !important;
+        background-color: #0E1117 !important;
+        padding: 0.5rem 3rem !important;
+        margin: 0 !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+    }
+    /* Add top margin to account for fixed progress bar */
+    .main .block-container {
+        margin-top: 4rem !important;
     }
 </style>
 """

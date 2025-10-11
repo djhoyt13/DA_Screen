@@ -73,17 +73,20 @@ print(total_revenue_per_product.apple)
 ```
 
 ### Exploratory Data Analysis
-```txt
-   ID      Car Type
-0   1         Sedan
-1   2           SUV
-2   3  Convertible
-3   4         Sedan
-4   5  Convertible
-5   6           SUV
+```python
+import pandas as pd
+
+# Create a sample DataFrame
+data = {
+    'Car Type': ['Sedan', 'SUV', 'Convertible', 'Sedan', 'Convertible', 'SUV']
+}
+df = pd.DataFrame(data)
+df
 ```
 
+```md
 Given the above dataset, what is the most appropriate form of encoding?
+```
 
 Label Encoding
 Ordinal Encoding
@@ -107,7 +110,10 @@ def worker(n):
 with ThreadPoolExecutor(max_workers=4) as executor:
     executor.map(worker, range(1, 5))
 ```
+
+```md
 How many threads are running concurrently?
+```
 
 ### Asyncio (I/O-bound)
 ```python
@@ -126,6 +132,11 @@ async def main():
 
 asyncio.run(main())
 ```
+
+```md
+What is the terminal output?
+```
+
 "Hello world!, Hello world!"
 "world! Hello, world! Hello"
 "Hello, Hello, world!, world!"
@@ -143,17 +154,24 @@ def test_is_even():
     assert is_even(4) is True
     assert is_even(5) is False
 ```
+
+```md
 What will the output of `pytest --cov=. test_questions.py` be?
+```
 
 1 passed
 1 failed
+2 passed
+2 failed
 
 
 ### Virtual ENV
 ```shell
 $ python3 -m venv .venv
+```
 
-# what command would you use to activate the above virtual enviornment (Linux or Windows)
+```md
+What command would you use to activate the above virtual enviornment (Linux or Windows)
 ```
 
 ## Containerization and Deployment
@@ -175,27 +193,46 @@ services:
       POSTGRES_DB: exampledb
 ```
 
+```md
 Given the docker-compose.yml above, answer the following:
+```
 
-1. What command builds all services defined in the file?
+```md
+A. What command builds all services defined in the file? (don't include flags)
+```
 
-2. What command starts all services in the background?
+```md
+B. What command starts all services in the background? (don't include flags)
+```
 
-3. What command stops just the 'web' service (but leaves 'db' running)?
+```md
+C. What command stops just the 'web' service (but leaves 'db' running)?
+```
 
-4. What command removes the stopped 'web' service container only (not the running db)?
+```md
+D. What command removes the stopped 'web' service container only (not the running db)?
+```
 
 ## Machine Learning Concepts
 
 ### Supervised & Unsupervised Learning
+```md
 You are consulting for a company that wants to understand its customer base better and predict customer spending based on historical data.
+
 What is the most approprate machine learning approach for each of the below questions?
+```
+
+```md
 A. Predicting the future spending of customers based on their past behavior and known attributes such as age, location, and income.
-    'Supervised'
-    'Unsupervised'
+```
+'Supervised'
+'Unsupervised'
+
+```md
 B. Grouping customers into distinct segments based on purchasing patterns to identify different types of shoppers.
-    'Supervised'
-    'Unsupervised'
+```
+'Supervised'
+'Unsupervised'
 
 ## Advanced Topics
 
@@ -214,26 +251,38 @@ model = nn.Sequential(
     nn.Linear(4, 1)
 )
 ```
-1. What is the shape of the tensor x?
-    (3, 4)
-    (4, 1)
-    (2, 3)
-    (3, 2)
-2. How many layers (including activation) does 'model' have?
+
+```md
+What is the shape of the tensor x?
+```
+(3, 4)
+(4, 1)
+(2, 3)
+(3, 2)
+
+```md
+How many layers (including activation) does 'model' have?
+```
 
 
 ### Probability
-1. A fair sided (6 sides) die is rolled twice, what is the probability of rolling a 6 on both throws (rounded to 4 decimals)? 
+```md
+A fair sided (6 sides) die is rolled twice, what is the probability of rolling a 6 on both throws (rounded to 4 decimals)?
+```
 
-2. A variable has mean 50 and standard deviation 10. What is the range within 2 standard deviations of each side of the mean? 
-    [30, 70]
-    [50, 70]
-    [30, 50]
-    [8, 12]
+```md
+A variable has mean 50 and standard deviation 10. What is the range within 2 standard deviations of each side of the mean?
+```
+[30, 70]
+[50, 70]
+[30, 50]
+[8, 12]
 ## Systems and Protocols
 
 ### How Agents Use Tools, MCP, A2A, and Other Protocols
+```md
 Which of the following statements accurately describes a key difference between A2A (Agent-to-Agent) communication and MCP (Message Control Protocol)?
+```
 
 A2A communication involves direct interaction between software agents for data sharing, while MCP focuses on ensuring reliable message delivery and error handling.
 MCP is used solely for agent negotiation, while A2A controls the overall system architecture.
@@ -241,29 +290,37 @@ A2A is focused on message security, whereas MCP is used for task coordination be
 A2A handles database management, and MCP is used for executing complex algorithms.
 
 ### Data Visualization
+```md
 You are given a dataset containing the following columns:
-* Product Category: A list of product types (laptops, smartphones, tablets)
-* Monthly Sales: The number of units sold each month
-* Region: The geographic region of the sales (North, South, East, West)
-* Customer Satisfaction: A score from 1 to 10
+
+Product Category: A list of product types (laptops, smartphones, tablets)
+Monthly Sales: The number of units sold each month
+Region: The geographic region of the sales (North, South, East, West)
+Customer Satisfaction: A score from 1 to 10
 
 Which of the following visualization methods would be most appropriate for each type of analysis, and why?
+```
 
-1. Compare the average monthly sales for each product category.
-    'Bar Chart'
-    'Histogram'
-    'Line Chart'
+```md
+Compare the average monthly sales for each product category.
+```
+'Bar Chart'
+'Histogram'
+'Line Chart'
 
-2. Display the distribution of customer satisfaction scores.
-    'Bar Chart'
-    'Histogram'
-    'Line Chart'
+```md
+Display the distribution of customer satisfaction scores.
+```
+'Bar Chart'
+'Histogram'
+'Line Chart'
 
-3. Show the trend of sales over time for each region.
-    'Bar Chart'
-    'Histogram'
-    'Line Chart'
-
+```md
+Show the trend of sales over time for each region.
+```
+'Bar Chart'
+'Histogram'
+'Line Chart'
 
 # Answer Key
 
@@ -310,3 +367,4 @@ Which of the following visualization methods would be most appropriate for each 
 21. Compare_Sales: "Bar Chart"
 21. Satisfaction_Scores: "Histogram"
 23. Sales_Trend: "Line Chart"
+
