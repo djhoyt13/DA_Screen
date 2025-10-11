@@ -154,8 +154,8 @@ def grade_quiz(user_answers):
         'answer_PyTorch_layers', 'answer_Probability_dice'
     ]
     
-    # Similarity threshold for fuzzy matching (90% similar = correct)
-    SIMILARITY_THRESHOLD = 0.90
+    # Similarity threshold for fuzzy matching (80% similar = correct)
+    SIMILARITY_THRESHOLD = 0.80
     
     for question_key, correct_answer in answer_key.items():
         user_answer = user_answers.get(question_key, '').strip()
