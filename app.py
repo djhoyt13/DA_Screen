@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
 from dotenv import load_dotenv
+import Levenshtein
 import styles
 
 # Load environment variables
@@ -78,7 +79,7 @@ def get_answer_key():
     """Map standardized question keys to correct answers"""
     return {
         # Python Basics
-        'answer_Unpacking': ['"World"', 'World'],
+        'answer_Unpacking': 'World',
         'answer_Loops': ['[1, 4, 9, 16]', '[1,4,9,16]'],
         'answer_Lambda_functions': ['[11, 22, 33]', '[11,22,33]'],
         'answer_Pydantic___Validation': ['"Data is not valid"', 'Data is not valid'],
@@ -122,6 +123,22 @@ def get_answer_key():
         'answer_DataViz_q4': "'Line Chart'"
     }
 
+def calculate_similarity(str1, str2):
+    """Calculate similarity ratio between two strings using Levenshtein distance"""
+    if not str1 or not str2:
+        return 0.0
+    # Normalize strings: lowercase and strip
+    s1 = str1.lower().strip()
+    s2 = str2.lower().strip()
+    # Calculate Levenshtein distance
+    distance = Levenshtein.distance(s1, s2)
+    max_len = max(len(s1), len(s2))
+    if max_len == 0:
+        return 1.0
+    # Return similarity ratio (1.0 = identical, 0.0 = completely different)
+    similarity = 1 - (distance / max_len)
+    return similarity
+
 def grade_quiz(user_answers):
     """Grade the quiz and return score and detailed results"""
     answer_key = get_answer_key()
@@ -129,14 +146,42 @@ def grade_quiz(user_answers):
     correct_count = 0
     detailed_results = {}
     
+    # Define which questions use text input (require fuzzy matching)
+    text_input_questions = [
+        'answer_Unpacking', 'answer_Loops', 'answer_Lambda_functions', 'answer_Pydantic___Validation',
+        'answer_NumPy_&_Pandas', 'answer_ThreadPool', 'answer_Virtual_ENV',
+        'answer_Docker_Build', 'answer_Docker_Start', 'answer_Docker_Stop', 'answer_Docker_Remove',
+        'answer_PyTorch_layers', 'answer_Probability_dice'
+    ]
+    
+    # Similarity threshold for fuzzy matching (90% similar = correct)
+    SIMILARITY_THRESHOLD = 0.90
+    
     for question_key, correct_answer in answer_key.items():
         user_answer = user_answers.get(question_key, '').strip()
+        is_correct = False
         
         # Handle multiple acceptable answers
         if isinstance(correct_answer, list):
-            is_correct = user_answer in correct_answer
+            # Check exact match first
+            if user_answer in correct_answer:
+                is_correct = True
+            # If text input question, use fuzzy matching
+            elif question_key in text_input_questions:
+                for correct_option in correct_answer:
+                    similarity = calculate_similarity(user_answer, correct_option)
+                    if similarity >= SIMILARITY_THRESHOLD:
+                        is_correct = True
+                        break
         else:
-            is_correct = user_answer == correct_answer
+            # Check exact match first
+            if user_answer == correct_answer:
+                is_correct = True
+            # If text input question, use fuzzy matching
+            elif question_key in text_input_questions:
+                similarity = calculate_similarity(user_answer, correct_answer)
+                if similarity >= SIMILARITY_THRESHOLD:
+                    is_correct = True
         
         if is_correct:
             correct_count += 1
