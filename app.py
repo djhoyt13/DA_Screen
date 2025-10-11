@@ -52,49 +52,26 @@ if 'timer_started' not in st.session_state:
 if 'first_quiz_interaction' not in st.session_state:
     st.session_state.first_quiz_interaction = False
 
-def load_questions_and_answers(md_path):
+def load_questions(md_path):
+    """Load questions from markdown file"""
     questions = {}
-    answers = {}
     current_section = None
 
     with open(md_path, 'r') as file:
         content = file.readlines()
 
-    # Parse questions
+    # Parse questions (stop at Answer Key section)
     for line in content:
         line = line.strip()
         if line.startswith('## '):
             current_section = line.strip('## ').strip()
             questions[current_section] = []
-            answers[current_section] = []  # Initialize the answers list for this section
         elif line.startswith('# Answer Key'):
             break
         elif current_section and line:  # Only add non-empty lines
             questions[current_section].append(line)
 
-    # Parse answers
-    answer_key_found = False
-    current_section = None
-    
-    for line in content:
-        line = line.strip()
-        
-        if line == '# Answer Key':
-            answer_key_found = True
-            continue
-            
-        if not answer_key_found:
-            continue
-            
-        if line.startswith('## '):
-            current_section = line.strip('## ').strip()
-            if current_section not in answers:
-                answers[current_section] = []
-        elif current_section and line and not line.startswith('#'):  # Only add non-empty, non-header lines
-            if current_section in answers:
-                answers[current_section].append(line)
-
-    return questions, answers
+    return questions
 
 # Define answer key mapping for grading
 def get_answer_key():
@@ -180,7 +157,7 @@ def grade_quiz(user_answers):
     }
 
 # Load questions and answers
-questions, answers = load_questions_and_answers('ds_questions.md')
+questions = load_questions('ds_questions.md')
 
 st.title("Data Scientist Technical Review")
 
@@ -656,20 +633,12 @@ if not st.session_state.submitted:
         ]
         
         # Check all answer keys in session state
-        missing_keys = []
         for key in expected_keys:
             value = st.session_state.get(key, '')
             # Check if the value is empty or None
             if value is None or (isinstance(value, str) and value.strip() == ''):
                 all_questions_answered = False
-                missing_keys.append(key)
-        
-        # Debug: show which keys are missing (optional - comment out in production)
-        if missing_keys:
-            st.warning(f"Missing answers for: {', '.join(missing_keys)}")
-            # Show what answer keys actually exist in session state
-            actual_answer_keys = [key for key in st.session_state.keys() if key.startswith('answer_')]
-            st.info(f"Actual answer keys in session state: {', '.join(sorted(actual_answer_keys))}")
+                break
         
         if not all_questions_answered:
             validation_errors.append("Please make sure you have answered all of the questions")
