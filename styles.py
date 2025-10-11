@@ -191,21 +191,17 @@ css = """
         background-color: #003D7A !important;
         border-color: #003D7A !important;
     }
-    /* Fixed progress bar at top using Streamlit native widget */
-    div[data-testid="stProgress"] {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        z-index: 1000 !important;
+    /* Sticky progress bar - targeting the container properly */
+    [data-testid="stVerticalBlock"] > [data-testid="element-container"]:has([data-testid="stProgress"]) {
+        position: -webkit-sticky !important;
+        position: sticky !important;
+        top: 0px !important;
+        z-index: 999 !important;
         background-color: #0E1117 !important;
-        padding: 0.5rem 3rem !important;
-        margin: 0 !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
-    }
-    /* Add top margin to account for fixed progress bar */
-    .main .block-container {
-        margin-top: 4rem !important;
+        padding-top: 0.5rem !important;
+        padding-bottom: 1rem !important;
+        border-bottom: 2px solid #00BFFF !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
     }
 </style>
 """
