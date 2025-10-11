@@ -197,17 +197,23 @@ css = """
         background-color: #003D7A !important;
         border-color: #003D7A !important;
     }
-    /* Sticky progress bar - targeting the container properly */
-    [data-testid="stVerticalBlock"] > [data-testid="element-container"]:has([data-testid="stProgress"]) {
+    /* Sticky progress bar - using more compatible selectors */
+    div[data-testid="stProgress"] {
         position: -webkit-sticky !important;
         position: sticky !important;
-        top: 0px !important;
+        top: 0 !important;
         z-index: 999 !important;
         background-color: #0E1117 !important;
-        padding-top: 0.5rem !important;
-        padding-bottom: 1rem !important;
+        padding: 0.5rem 0 1rem 0 !important;
+        margin: 0 !important;
         border-bottom: 2px solid #00BFFF !important;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+    }
+    /* Ensure parent allows stickiness */
+    section.main,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stVerticalBlock"] {
+        position: relative !important;
     }
 </style>
 """
