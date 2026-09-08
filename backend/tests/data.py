@@ -22,9 +22,9 @@ PERFECT_ANSWERS = {
     "answer_Probability_dice": "0.0278",
     # "answer_Probability_stddev": "[30, 70]",
     "answer_A2A_vs_MCP": (
-        "A2A communication involves direct interaction between software agents "
-        "for data sharing, while MCP focuses on ensuring reliable message delivery "
-        "and error handling."
+        "A2A enables agents to communicate and collaborate with each other, "
+        "while MCP standardizes how an agent connects to tools, data sources, "
+        "and external context."
     ),
     "answer_DataViz_q2": "'Bar Chart'",
     "answer_DataViz_q3": "'Histogram'",

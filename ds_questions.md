@@ -287,10 +287,10 @@ A variable has mean 50 and standard deviation 10. What is the range within 2 sta
 
 ### How Agents Use Tools, MCP, A2A, and Other Protocols
 ```md
-Which of the following statements accurately describes a key difference between A2A (Agent-to-Agent) communication and MCP (Message Control Protocol)?
+Which of the following statements accurately describes a key difference between A2A (Agent-to-Agent) communication and MCP (Model Context Protocol)?
 ```
 
-A2A communication involves direct interaction between software agents for data sharing, while MCP focuses on ensuring reliable message delivery and error handling.
+A2A enables agents to communicate and collaborate with each other, while MCP standardizes how an agent connects to tools, data sources, and external context.
 MCP is used solely for agent negotiation, while A2A controls the overall system architecture.
 A2A is focused on message security, whereas MCP is used for task coordination between agents.
 A2A handles database management, and MCP is used for executing complex algorithms.
@@ -369,7 +369,7 @@ Show the trend of sales over time for each region.
 <!-- 19. 2_SD_of_mean: [30, 70] -->
 
 ## Systems and Protocols
-20. A2A_vs_MCP: "A2A communication involves direct interaction between software agents for data sharing, while MCP focuses on ensuring reliable message delivery and error handling."
+20. A2A_vs_MCP: "A2A enables agents to communicate and collaborate with each other, while MCP standardizes how an agent connects to tools, data sources, and external context."
 
 ## Data Visualization
 21. Compare_Sales: "Bar Chart"

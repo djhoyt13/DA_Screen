@@ -43,7 +43,7 @@ def get_answer_key():
         # 'answer_Probability_stddev': '[30, 70]',
         
         # Systems and Protocols
-        'answer_A2A_vs_MCP': 'A2A communication involves direct interaction between software agents for data sharing, while MCP focuses on ensuring reliable message delivery and error handling.',
+        'answer_A2A_vs_MCP': 'A2A enables agents to communicate and collaborate with each other, while MCP standardizes how an agent connects to tools, data sources, and external context.',
         
         # Data Visualization
         'answer_DataViz_q2': "'Bar Chart'",

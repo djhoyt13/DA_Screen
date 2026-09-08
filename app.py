@@ -15,8 +15,8 @@ load_dotenv()
 
 # Set page configuration
 st.set_page_config(
-    page_title="Data Analyst Python Review",
-    page_icon="📊",
+    page_title="Data Scientist Initial Assessment",
+    page_icon="frontend/public/mantech-m.png",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -116,7 +116,7 @@ def get_answer_key():
         # 'answer_Probability_stddev': '[30, 70]',
         
         # Systems and Protocols
-        'answer_A2A_vs_MCP': 'A2A communication involves direct interaction between software agents for data sharing, while MCP focuses on ensuring reliable message delivery and error handling.',
+        'answer_A2A_vs_MCP': 'A2A enables agents to communicate and collaborate with each other, while MCP standardizes how an agent connects to tools, data sources, and external context.',
         
         # Data Visualization
         'answer_DataViz_q2': "'Bar Chart'",
@@ -565,7 +565,7 @@ for section_idx, section_name in enumerate(section_order):
                         elif category == "How Agents Use Tools, MCP, A2A, and Other Protocols":
                             # Handle A2A/MCP radio buttons
                             agent_options = [
-                                "A2A communication involves direct interaction between software agents for data sharing, while MCP focuses on ensuring reliable message delivery and error handling.",
+                                "A2A enables agents to communicate and collaborate with each other, while MCP standardizes how an agent connects to tools, data sources, and external context.",
                                 "MCP is used solely for agent negotiation, while A2A controls the overall system architecture.",
                                 "A2A is focused on message security, whereas MCP is used for task coordination between agents.",
                                 "A2A handles database management, and MCP is used for executing complex algorithms."

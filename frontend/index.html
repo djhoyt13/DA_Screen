@@ -3,11 +3,40 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Data Analyst Python Review</title>
+    <title>Data Scientist Initial Assessment</title>
+    <!-- Cache-busted favicons: browsers (and IDE webviews) aggressively cache /favicon.ico -->
+    <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=3" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png?v=3" />
+    <link rel="shortcut icon" href="/favicon.ico?v=3" />
+    <link rel="apple-touch-icon" href="/mantech-m.png?v=3" />
+    <script>
+      // Re-apply favicon after load to defeat stale tab-icon caches.
+      (function () {
+        const href = "/favicon.ico?v=3";
+        function apply() {
+          document.querySelectorAll('link[rel*="icon"]').forEach((el) => el.remove());
+          const link = document.createElement("link");
+          link.rel = "icon";
+          link.type = "image/x-icon";
+          link.href = href + "&t=" + Date.now();
+          document.head.appendChild(link);
+        }
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", apply);
+        } else {
+          apply();
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      MANTECH site uses Industry (display) + Proxima Nova (body).
+      Closest free Google Fonts stand-ins: Barlow Condensed + Montserrat.
+    -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Montserrat:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
   </head>

@@ -47,6 +47,7 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [results, setResults] = useState(null);
+  const [statementAcknowledged, setStatementAcknowledged] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,6 +83,7 @@ export default function App() {
   const totalQuestions = getTotalQuestions(quiz, questionKeys);
   const answeredCount = countAnswered(answers, questionKeys);
   const locked = submitted || submitting;
+  const assessmentOpen = statementAcknowledged && !locked;
 
   function handleCandidateChange(field, value) {
     setCandidate((prev) => ({ ...prev, [field]: value }));
@@ -94,6 +96,10 @@ export default function App() {
 
   async function handleSubmit() {
     if (submitted || submitting) {
+      return;
+    }
+    if (!statementAcknowledged) {
+      setSubmitErrors(['Please confirm that you have read the welcome statement before continuing.']);
       return;
     }
     const clientErrors = validateSubmission(candidate, answers, questionKeys);
@@ -134,6 +140,23 @@ export default function App() {
 
   return (
     <div className="page">
+      <header className="brand-bar">
+        <div className="brand-lockup">
+          <img
+            className="brand-mark"
+            src="/mantech-m.png"
+            alt="MANTECH"
+            width={42}
+            height={42}
+          />
+          <div className="brand-text">
+            <span className="brand-name">MANTECH</span>
+            <span className="brand-mantra">Always Advancing™</span>
+          </div>
+        </div>
+        <span className="brand-pill">Initial Assessment</span>
+      </header>
+
       <h1>{title}</h1>
       <ProgressBar answered={answeredCount} total={totalQuestions} />
 
@@ -148,40 +171,68 @@ export default function App() {
         organization.
       </div>
 
-      <CandidateForm
-        values={candidate}
-        errors={fieldErrors}
-        onChange={handleCandidateChange}
-        disabled={locked}
-      />
+      <label className={`ack-check${statementAcknowledged ? ' is-checked' : ''}`}>
+        <input
+          type="checkbox"
+          checked={statementAcknowledged}
+          disabled={locked}
+          onChange={(event) => {
+            setStatementAcknowledged(event.target.checked);
+            if (event.target.checked) {
+              setSubmitErrors((prev) =>
+                prev.filter(
+                  (message) =>
+                    message !==
+                    'Please confirm that you have read the welcome statement before continuing.',
+                ),
+              );
+            }
+          }}
+        />
+        <span className="ack-box" aria-hidden="true" />
+        <span className="ack-label">I have read the above statement</span>
+      </label>
 
-      {loading ? <p className="status-copy">Loading questions…</p> : null}
-      {loadError ? <div className="error-msg">{loadError}</div> : null}
-
-      {quiz
-        ? (quiz.sections || []).map((section) => (
-            <QuestionSection
-              key={section.name}
-              section={section}
-              answers={answers}
-              onAnswer={handleAnswer}
-              disabled={locked}
-            />
-          ))
-        : null}
-
-      {quiz ? <hr className="submit-divider" /> : null}
-
-      {quiz && !submitted ? (
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={handleSubmit}
-          disabled={submitting}
-        >
-          {submitting ? 'Submitting…' : 'Submit Answers'}
-        </button>
+      {!statementAcknowledged && !submitted ? (
+        <p className="ack-hint">Check the box above to begin the assessment.</p>
       ) : null}
+
+      <div className={!statementAcknowledged && !submitted ? 'assessment-gated' : undefined}>
+        <CandidateForm
+          values={candidate}
+          errors={fieldErrors}
+          onChange={handleCandidateChange}
+          disabled={!assessmentOpen}
+        />
+
+        {loading ? <p className="status-copy">Loading questions…</p> : null}
+        {loadError ? <div className="error-msg">{loadError}</div> : null}
+
+        {quiz
+          ? (quiz.sections || []).map((section) => (
+              <QuestionSection
+                key={section.name}
+                section={section}
+                answers={answers}
+                onAnswer={handleAnswer}
+                disabled={!assessmentOpen}
+              />
+            ))
+          : null}
+
+        {quiz ? <hr className="submit-divider" /> : null}
+
+        {quiz && !submitted ? (
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={handleSubmit}
+            disabled={!statementAcknowledged || submitting}
+          >
+            {submitting ? 'Submitting…' : 'Submit Answers'}
+          </button>
+        ) : null}
+      </div>
 
       {submitted ? (
         <div className="success-msg">Thank you! Your quiz has been submitted.</div>
