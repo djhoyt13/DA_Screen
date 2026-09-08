@@ -29,6 +29,7 @@ sums = list(map(lambda x, y: x + y, a, b))
 print(sums)
 ```
 
+<!--
 ### Pydantic / Validation
 ```python
 from pydantic import BaseModel
@@ -49,6 +50,7 @@ try:
 except:
     print("Data is not valid")
 ```
+-->
 
 ## Data Manipulation
 
@@ -209,9 +211,11 @@ B. What command starts all services in the background? (don't include flags)
 C. What command stops just the 'web' service (but leaves 'db' running)?
 ```
 
+<!--
 ```md
 D. What command removes the stopped 'web' service container only (not the running db)?
 ```
+-->
 
 ## Machine Learning Concepts
 
@@ -270,6 +274,7 @@ How many layers (including activation) does 'model' have?
 A fair sided (6 sides) die is rolled twice, what is the probability of rolling a 6 on both throws (rounded to 4 decimals)?
 ```
 
+<!--
 ```md
 A variable has mean 50 and standard deviation 10. What is the range within 2 standard deviations of each side of the mean?
 ```
@@ -277,6 +282,7 @@ A variable has mean 50 and standard deviation 10. What is the range within 2 sta
 [50, 70]
 [30, 50]
 [8, 12]
+-->
 ## Systems and Protocols
 
 ### How Agents Use Tools, MCP, A2A, and Other Protocols
@@ -315,12 +321,14 @@ Display the distribution of customer satisfaction scores.
 'Histogram'
 'Line Chart'
 
+<!--
 ```md
 Show the trend of sales over time for each region.
 ```
 'Bar Chart'
 'Histogram'
 'Line Chart'
+-->
 
 # Answer Key
 
@@ -328,7 +336,7 @@ Show the trend of sales over time for each region.
 1. Unpacking: "World"
 2. Loops: [1, 4, 9, 16]
 3. Lambda_Function: [11, 22, 33]
-4. Pydantic_Validation: "Data is not valid"
+<!-- 4. Pydantic_Validation: "Data is not valid" -->
 
 ## Data Manipulation
 5. Pandas: 18.0
@@ -346,7 +354,7 @@ Show the trend of sales over time for each region.
 10. Docker_Build: "docker-compose build"
 11. Docker_Start: "docker-compose up -d"
 12. Docker_Stop: "docker-compose stop web"
-13. Docker_Remove: "docker-compose rm -f web"
+<!-- 13. Docker_Remove: "docker-compose rm -f web" -->
 
 ## Machine Learning Concepts
 14. Customer_spending: "Supervised"
@@ -358,7 +366,7 @@ Show the trend of sales over time for each region.
 
 ## Probability
 18. rolling_7: 0.0278 or .0278
-19. 2_SD_of_mean: [30, 70]
+<!-- 19. 2_SD_of_mean: [30, 70] -->
 
 ## Systems and Protocols
 20. A2A_vs_MCP: "A2A communication involves direct interaction between software agents for data sharing, while MCP focuses on ensuring reliable message delivery and error handling."
@@ -366,5 +374,5 @@ Show the trend of sales over time for each region.
 ## Data Visualization
 21. Compare_Sales: "Bar Chart"
 21. Satisfaction_Scores: "Histogram"
-23. Sales_Trend: "Line Chart"
+<!-- 23. Sales_Trend: "Line Chart" -->
 

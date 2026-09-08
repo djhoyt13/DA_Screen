@@ -54,22 +54,23 @@ if 'first_quiz_interaction' not in st.session_state:
     st.session_state.first_quiz_interaction = False
 
 def load_questions(md_path):
-    """Load questions from markdown file"""
+    """Load questions from markdown file (HTML-comment blocks are excluded)."""
     questions = {}
     current_section = None
 
     with open(md_path, 'r') as file:
-        content = file.readlines()
+        text = file.read()
 
-    # Parse questions (stop at Answer Key section)
-    for line in content:
+    text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
+
+    for line in text.splitlines():
         line = line.strip()
         if line.startswith('## '):
             current_section = line.strip('## ').strip()
             questions[current_section] = []
         elif line.startswith('# Answer Key'):
             break
-        elif current_section and line:  # Only add non-empty lines
+        elif current_section and line:
             questions[current_section].append(line)
 
     return questions
@@ -82,7 +83,7 @@ def get_answer_key():
         'answer_Unpacking': 'World',
         'answer_Loops': ['[1, 4, 9, 16]', '[1,4,9,16]'],
         'answer_Lambda_functions': ['[11, 22, 33]', '[11,22,33]'],
-        'answer_Pydantic___Validation': ['"Data is not valid"', 'Data is not valid'],
+        # 'answer_Pydantic___Validation': ['"Data is not valid"', 'Data is not valid'],
         
         # Data Manipulation
         'answer_NumPy_&_Pandas': ['18.0', '18'],
@@ -100,7 +101,7 @@ def get_answer_key():
         'answer_Docker_Build': ['docker-compose build', 'docker compose build'],
         'answer_Docker_Start': ['docker-compose up', 'docker compose up'],
         'answer_Docker_Stop': ['docker-compose stop web', 'docker compose stop web'],
-        'answer_Docker_Remove': ['docker-compose rm -f web', 'docker compose rm -f web'],
+        # 'answer_Docker_Remove': ['docker-compose rm -f web', 'docker compose rm -f web'],
         
         # Machine Learning Concepts
         'answer_ML_q2': "'Supervised'",
@@ -112,7 +113,7 @@ def get_answer_key():
         
         # Probability
         'answer_Probability_dice': ['0.0278', '.0278'],  # Accept both formats
-        'answer_Probability_stddev': '[30, 70]',
+        # 'answer_Probability_stddev': '[30, 70]',
         
         # Systems and Protocols
         'answer_A2A_vs_MCP': 'A2A communication involves direct interaction between software agents for data sharing, while MCP focuses on ensuring reliable message delivery and error handling.',
@@ -120,7 +121,7 @@ def get_answer_key():
         # Data Visualization
         'answer_DataViz_q2': "'Bar Chart'",
         'answer_DataViz_q3': "'Histogram'",
-        'answer_DataViz_q4': "'Line Chart'"
+        # 'answer_DataViz_q4': "'Line Chart'"
     }
 
 def calculate_similarity(str1, str2):
@@ -148,9 +149,11 @@ def grade_quiz(user_answers):
     
     # Define which questions use text input (require fuzzy matching)
     text_input_questions = [
-        'answer_Unpacking', 'answer_Loops', 'answer_Lambda_functions', 'answer_Pydantic___Validation',
+        'answer_Unpacking', 'answer_Loops', 'answer_Lambda_functions',
+        # 'answer_Pydantic___Validation',
         'answer_NumPy_&_Pandas', 'answer_ThreadPool', 'answer_Virtual_ENV',
-        'answer_Docker_Build', 'answer_Docker_Start', 'answer_Docker_Stop', 'answer_Docker_Remove',
+        'answer_Docker_Build', 'answer_Docker_Start', 'answer_Docker_Stop',
+        # 'answer_Docker_Remove',
         'answer_PyTorch_layers', 'answer_Probability_dice'
     ]
     
@@ -207,23 +210,11 @@ questions = load_questions('ds_questions.md')
 st.title("Data Scientist Technical Review")
 
 # Add progress bar based on answered questions
-total_questions = 24  # Total number of questions in the quiz
+expected_keys = list(get_answer_key().keys())
+total_questions = len(expected_keys)
 answered_count = 0
 
 # Count how many questions have been answered
-expected_keys = [
-    'answer_Unpacking', 'answer_Loops', 'answer_Lambda_functions', 'answer_Pydantic___Validation',
-    'answer_NumPy_&_Pandas', 'answer_Exploratory_Data_Analysis',
-    'answer_ThreadPool', 'answer_Asyncio',
-    'answer_pytest', 'answer_Virtual_ENV',
-    'answer_Docker_Build', 'answer_Docker_Start', 'answer_Docker_Stop', 'answer_Docker_Remove',
-    'answer_ML_q2', 'answer_ML_q3',
-    'answer_PyTorch_shape', 'answer_PyTorch_layers',
-    'answer_Probability_dice', 'answer_Probability_stddev',
-    'answer_A2A_vs_MCP',
-    'answer_DataViz_q2', 'answer_DataViz_q3', 'answer_DataViz_q4'
-]
-
 for key in expected_keys:
     value = st.session_state.get(key, '')
     if value is not None and (not isinstance(value, str) or value.strip() != ''):
@@ -663,19 +654,8 @@ if not st.session_state.submitted:
         # Check if all questions are answered
         all_questions_answered = True
         
-        # List of all expected answer keys (must match actual generated keys)
-        expected_keys = [
-            'answer_Unpacking', 'answer_Loops', 'answer_Lambda_functions', 'answer_Pydantic___Validation',
-            'answer_NumPy_&_Pandas', 'answer_Exploratory_Data_Analysis',
-            'answer_ThreadPool', 'answer_Asyncio',
-            'answer_pytest', 'answer_Virtual_ENV',
-            'answer_Docker_Build', 'answer_Docker_Start', 'answer_Docker_Stop', 'answer_Docker_Remove',
-            'answer_ML_q2', 'answer_ML_q3',
-            'answer_PyTorch_shape', 'answer_PyTorch_layers',
-            'answer_Probability_dice', 'answer_Probability_stddev',
-            'answer_A2A_vs_MCP',
-            'answer_DataViz_q2', 'answer_DataViz_q3', 'answer_DataViz_q4'
-        ]
+        # List of all expected answer keys (must match active questions in ds_questions.md)
+        expected_keys = list(get_answer_key().keys())
         
         # Check all answer keys in session state
         for key in expected_keys:

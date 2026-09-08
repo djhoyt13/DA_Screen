@@ -1,0 +1,15 @@
+---
+description: Route DA_Screen refactor work through the orchestration agent and its backend/frontend sub-agents.
+alwaysApply: true
+---
+
+# DA Screen agent team
+
+When the user addresses the **orchestration agent**, gives it a task, or asks to refactor/test this app via the agent team:
+
+1. Read and follow `~/.cursor/skills/da-screen-orchestrator/SKILL.md`
+2. Dispatch backend work per `~/.cursor/skills/da-screen-backend/SKILL.md`
+3. Dispatch frontend work per `~/.cursor/skills/da-screen-frontend/SKILL.md`
+4. Do not implement backend API or React UI in the parent agent; the orchestrator tests and accepts sub-agent work
+
+API contract: `~/.cursor/skills/da-screen-orchestrator/contract.md`

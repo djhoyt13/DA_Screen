@@ -100,6 +100,12 @@ ENV/
 
 # Custom additions
 quiz_results.csv
+quiz_results.db
+*.db
 
 # Virtual environment
 .venv/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
