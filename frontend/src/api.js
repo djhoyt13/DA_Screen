@@ -44,8 +44,8 @@ async function parseJson(response) {
   }
 }
 
-export async function fetchQuestions() {
-  const url = `${getApiBase()}/api/questions`;
+export async function fetchQuestions(assessment = 'ds') {
+  const url = `${getApiBase()}/api/questions?assessment=${encodeURIComponent(assessment)}`;
   let response;
   try {
     response = await fetchWithTimeout(url, { method: 'GET' }, 8000);
@@ -64,6 +64,18 @@ export async function fetchQuestions() {
     throw new ApiError(data.error || `Failed to load questions (${response.status}).`, {
       status: response.status,
       fields: data.fields,
+    });
+  }
+  return data;
+}
+
+export async function fetchAssessments() {
+  const url = `${getApiBase()}/api/assessments`;
+  const response = await fetchWithTimeout(url, { method: 'GET' }, 8000);
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new ApiError(data.error || `Failed to load assessments (${response.status}).`, {
+      status: response.status,
     });
   }
   return data;

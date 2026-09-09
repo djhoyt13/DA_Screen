@@ -1,5 +1,7 @@
 """Shared quiz payloads for tests (not pytest fixtures)."""
 
+from backend.de_quiz import get_de_answer_key
+
 PERFECT_ANSWERS = {
     "answer_Unpacking": "World",
     "answer_Loops": "[1, 4, 9, 16]",
@@ -30,6 +32,15 @@ PERFECT_ANSWERS = {
     "answer_DataViz_q3": "'Histogram'",
     # "answer_DataViz_q4": "'Line Chart'",
 }
+
+
+def perfect_de_answers():
+    """Build a perfect DE answer map from the DE answer key."""
+    answers = {}
+    for key, value in get_de_answer_key().items():
+        answers[key] = value[0] if isinstance(value, list) else value
+    return answers
+
 
 VALID_CANDIDATE = {
     "name": "Jane Doe",

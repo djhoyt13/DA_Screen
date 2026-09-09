@@ -20,11 +20,19 @@ load_dotenv(REPO_ROOT / ".env")
 MANTECH_MARK = REPO_ROOT / "frontend" / "public" / "mantech-m.png"
 
 
-def build_results_email_html(name, email, phone, grading_results, submitted_at=None):
+def build_results_email_html(
+    name,
+    email,
+    phone,
+    grading_results,
+    submitted_at=None,
+    assessment_title="Data Scientist Initial Assessment",
+):
     """MANTECH dark-theme HTML results report matching the React web app."""
     if submitted_at is None:
         submitted_at = datetime.now()
     timestamp = submitted_at.strftime("%Y-%m-%d %H:%M:%S")
+    safe_title = escape(str(assessment_title))
 
     safe_name = escape(str(name))
     safe_email = escape(str(email))
@@ -63,7 +71,7 @@ def build_results_email_html(name, email, phone, grading_results, submitted_at=N
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Data Scientist Initial Assessment Results</title>
+  <title>{safe_title} Results</title>
 </head>
 <body style="margin:0;padding:0;background-color:#0b1018;color:#f2f4f7;font-family:Montserrat,Helvetica Neue,Helvetica,Arial,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0b1018;padding:24px 12px;">
@@ -100,7 +108,7 @@ def build_results_email_html(name, email, phone, grading_results, submitted_at=N
           <tr>
             <td style="padding:28px 0 8px 0;">
               <h1 style="margin:0;font-family:Barlow Condensed,Arial Narrow,Impact,sans-serif;font-size:34px;font-weight:700;letter-spacing:0.02em;color:#ffffff;line-height:1.15;">
-                Data Scientist Initial Assessment
+                {safe_title}
               </h1>
               <div style="width:120px;height:3px;background:linear-gradient(90deg,#df2327,rgba(223,35,39,0));margin-top:12px;"></div>
               <p style="margin:14px 0 0 0;color:#8b95a8;font-size:14px;">Results report for recruiter review</p>
@@ -188,7 +196,7 @@ def build_results_email_html(name, email, phone, grading_results, submitted_at=N
           <tr>
             <td style="padding:28px 0 8px 0;border-top:1px solid #2a3548;">
               <p style="margin:0;color:#8b95a8;font-size:12px;line-height:1.5;">
-                MANTECH Data Scientist Initial Assessment &mdash; automated results notification.
+                MANTECH {safe_title} &mdash; automated results notification.
                 This assessment is one data point in the hiring decision and is not a pass/fail exam.
               </p>
             </td>
@@ -202,7 +210,15 @@ def build_results_email_html(name, email, phone, grading_results, submitted_at=N
 """
 
 
-def send_results_email(name, email, phone, recruiter_email, grading_results, submitted_at=None):
+def send_results_email(
+    name,
+    email,
+    phone,
+    recruiter_email,
+    grading_results,
+    submitted_at=None,
+    assessment_title="Data Scientist Initial Assessment",
+):
     """Send the dark-theme HTML report via Gmail SMTP.
 
     Returns (email_sent, email_warning). Never raises for SMTP/credential failures.
@@ -216,12 +232,17 @@ def send_results_email(name, email, phone, recruiter_email, grading_results, sub
 
     try:
         email_html = build_results_email_html(
-            name, email, phone, grading_results, submitted_at=submitted_at
+            name,
+            email,
+            phone,
+            grading_results,
+            submitted_at=submitted_at,
+            assessment_title=assessment_title,
         )
         msg = MIMEMultipart("related")
         msg["From"] = sender_email
         msg["To"] = receiver_email
-        msg["Subject"] = f"Data Scientist Initial Assessment - {name}"
+        msg["Subject"] = f"{assessment_title} - {name}"
 
         alt = MIMEMultipart("alternative")
         msg.attach(alt)

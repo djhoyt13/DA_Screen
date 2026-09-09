@@ -115,6 +115,110 @@ body,
   color: var(--mt-cyan);
   border: 1px solid rgba(117, 216, 240, 0.35);
   background: rgba(117, 216, 240, 0.08);
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  white-space: nowrap;
+}
+
+.brand-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-link {
+  background: transparent;
+  border: none;
+  color: var(--mt-cyan);
+  font-family: var(--mt-font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 0.25rem 0;
+}
+
+.brand-link:hover {
+  color: #ffffff;
+}
+
+.chooser-lead {
+  max-width: 42rem;
+  margin: 0.5rem 0 1.75rem;
+  color: var(--mt-text-soft);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.chooser-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.chooser-card {
+  text-align: left;
+  cursor: pointer;
+  padding: 1.35rem 1.4rem;
+  border-radius: var(--mt-radius);
+  border: 1px solid var(--mt-border);
+  background:
+    linear-gradient(160deg, rgba(223, 35, 39, 0.16), rgba(22, 29, 43, 0.95) 42%, var(--mt-panel));
+  color: var(--mt-text);
+  box-shadow: var(--mt-shadow);
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.chooser-card:hover {
+  border-color: rgba(223, 35, 39, 0.75);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px rgba(223, 35, 39, 0.18);
+}
+
+.chooser-kicker {
+  display: block;
+  font-family: var(--mt-font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mt-cyan);
+  margin-bottom: 0.55rem;
+}
+
+.chooser-title {
+  display: block;
+  font-family: var(--mt-font-display);
+  font-size: 1.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.65rem;
+}
+
+.chooser-copy {
+  display: block;
+  color: var(--mt-text-soft);
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+
+.chooser-url {
+  display: inline-block;
+  margin-top: 1rem;
+  font-family: var(--mt-font-mono);
+  font-size: 0.85rem;
+  color: var(--mt-cyan);
+  letter-spacing: 0.02em;
+}
+
+a.chooser-card {
+  text-decoration: none;
+  color: inherit;
+}
   padding: 0.35rem 0.75rem;
   border-radius: 999px;
   white-space: nowrap;
@@ -698,5 +802,9 @@ input[type="text"]:disabled,
 
   .welcome-msg {
     font-size: 1.05rem;
+  }
+
+  .chooser-grid {
+    grid-template-columns: 1fr;
   }
 }

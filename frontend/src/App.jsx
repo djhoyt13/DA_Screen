@@ -18,6 +18,19 @@ const EMPTY_CANDIDATE = {
   recruiter_email: '',
 };
 
+const ROLE_COPY = {
+  ds: {
+    fallbackTitle: 'Data Scientist Technical Review',
+    role: 'Data Scientist',
+    domain: 'Data Science',
+  },
+  de: {
+    fallbackTitle: 'Data Engineer Technical Review',
+    role: 'Data Engineer',
+    domain: 'Data Engineering',
+  },
+};
+
 function fieldMessagesFromApi(error) {
   const messages = [];
   if (error?.fields && typeof error.fields === 'object') {
@@ -36,7 +49,7 @@ function fieldMessagesFromApi(error) {
   return messages.length ? messages : ['Submit failed. Please try again.'];
 }
 
-export default function App() {
+export default function App({ assessmentId = 'ds', onChangeAssessment }) {
   const [quiz, setQuiz] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -49,16 +62,27 @@ export default function App() {
   const [results, setResults] = useState(null);
   const [statementAcknowledged, setStatementAcknowledged] = useState(false);
 
+  const roleCopy = ROLE_COPY[assessmentId] || ROLE_COPY.ds;
+
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       setLoading(true);
       setLoadError('');
+      setQuiz(null);
+      setAnswers({});
+      setSubmitted(false);
+      setResults(null);
+      setStatementAcknowledged(false);
+      setSubmitErrors([]);
       try {
-        const data = await fetchQuestions();
+        const data = await fetchQuestions(assessmentId);
         if (!cancelled) {
           setQuiz(data);
+          document.title = data?.title
+            ? String(data.title).replace('Technical Review', 'Initial Assessment')
+            : roleCopy.fallbackTitle.replace('Technical Review', 'Initial Assessment');
         }
       } catch (err) {
         if (!cancelled) {
@@ -77,7 +101,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [assessmentId, roleCopy.fallbackTitle]);
 
   const questionKeys = useMemo(() => collectQuestionKeys(quiz), [quiz]);
   const totalQuestions = getTotalQuestions(quiz, questionKeys);
@@ -111,6 +135,7 @@ export default function App() {
     setSubmitting(true);
     try {
       const payload = {
+        assessment: assessmentId,
         name: candidate.name.trim(),
         email: candidate.email.trim(),
         phone: candidate.phone.trim(),
@@ -136,7 +161,7 @@ export default function App() {
     }
   }
 
-  const title = quiz?.title || 'Data Scientist Technical Review';
+  const title = quiz?.title || roleCopy.fallbackTitle;
 
   return (
     <div className="page">
@@ -154,20 +179,27 @@ export default function App() {
             <span className="brand-mantra">Always Advancing™</span>
           </div>
         </div>
-        <span className="brand-pill">Initial Assessment</span>
+        <div className="brand-actions">
+          {typeof onChangeAssessment === 'function' ? (
+            <button type="button" className="brand-link" onClick={onChangeAssessment}>
+              Change assessment
+            </button>
+          ) : null}
+          <span className="brand-pill">Initial Assessment</span>
+        </div>
       </header>
 
       <h1>{title}</h1>
       <ProgressBar answered={answeredCount} total={totalQuestions} />
 
       <div className="welcome-msg">
-        Welcome to the Data Scientist technical review. The results of this review are
+        Welcome to the {roleCopy.role} technical review. The results of this review are
         only one data point in our team&apos;s hiring decision. This is{' '}
         <strong>
           <u>NOT</u>
         </strong>{' '}
         a pass/fail exam; it is used to assess your current strengths and areas for
-        improvement in the domains of Data Science that are relevant to our
+        improvement in the domains of {roleCopy.domain} that are relevant to our
         organization.
       </div>
 

@@ -13,6 +13,7 @@ def save_submission(
     grading_results,
     email_sent=False,
     created_at=None,
+    assessment="ds",
 ):
     """Insert a submission row plus one answers row per question. Returns the new id."""
     session = get_session()
@@ -27,6 +28,7 @@ def save_submission(
             correct_count=grading_results["correct_count"],
             total_questions=grading_results["total_questions"],
             email_sent=bool(email_sent),
+            assessment=assessment or "ds",
         )
         session.add(submission)
         session.flush()

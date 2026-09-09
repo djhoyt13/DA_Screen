@@ -20,6 +20,7 @@ class Submission(Base):
     correct_count = Column(Integer, nullable=False)
     total_questions = Column(Integer, nullable=False)
     email_sent = Column(Boolean, default=False, nullable=False)
+    assessment = Column(String, default="ds", nullable=False)
 
     answers = relationship("Answer", back_populates="submission")
 

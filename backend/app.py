@@ -13,14 +13,12 @@ from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import Body, FastAPI
+from fastapi import Body, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend import emailer, persistence
+from backend import assessments, emailer, persistence
 from backend.database import init_db
-from backend.grading import get_answer_key, grade_quiz
-from backend.questions import QUESTION_KEYS, build_questions_payload
 from backend.validation import is_valid_email, is_valid_name, is_valid_phone
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -57,7 +55,7 @@ def _as_str(value):
     return value if isinstance(value, str) else str(value)
 
 
-def validate_submit(payload):
+def validate_submit(payload, assessment_id="ds"):
     """Return a fields dict of errors, or empty dict if valid."""
     fields = {}
     name = _as_str(payload.get("name")).strip() if isinstance(payload, dict) else ""
@@ -92,7 +90,7 @@ def validate_submit(payload):
         fields["answers"] = "Please make sure you have answered all of the questions"
     else:
         missing = False
-        for key in get_answer_key():
+        for key in assessments.get_answer_key_for(assessment_id):
             value = answers.get(key, "")
             if value is None or (isinstance(value, str) and value.strip() == ""):
                 missing = True
@@ -122,9 +120,20 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/assessments")
+def get_assessments():
+    return {"assessments": assessments.list_assessments()}
+
+
 @app.get("/api/questions")
-def get_questions():
-    return build_questions_payload()
+def get_questions(assessment: str = Query(default="ds")):
+    normalized = assessments.normalize_assessment_id(assessment)
+    if normalized is None:
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"Unknown assessment: {assessment}"},
+        )
+    return assessments.build_questions_payload(normalized)
 
 
 @app.post("/api/submit")
@@ -132,20 +141,33 @@ def submit_quiz(payload: dict = Body(default=None)):
     if payload is None:
         payload = {}
     try:
-        fields = validate_submit(payload)
+        assessment_raw = payload.get("assessment", "ds")
+        assessment_id = assessments.normalize_assessment_id(assessment_raw)
+        if assessment_id is None:
+            return _validation_error(
+                {"assessment": f"Unknown assessment: {assessment_raw}"},
+                message="Validation failed",
+            )
+
+        fields = validate_submit(payload, assessment_id=assessment_id)
         if fields:
             return _validation_error(fields)
 
+        meta = assessments.get_assessment_meta(assessment_id)
         name = _as_str(payload.get("name")).strip()
         email = _as_str(payload.get("email")).strip()
         phone = _as_str(payload.get("phone")).strip()
         recruiter_email = _as_str(payload.get("recruiter_email")).strip()
         raw_answers = payload.get("answers") or {}
         answers = {}
-        for key in QUESTION_KEYS:
-            answers[key] = _as_str(raw_answers.get(key, "")).strip() if raw_answers.get(key) is not None else ""
+        for key in assessments.question_keys_for(assessment_id):
+            answers[key] = (
+                _as_str(raw_answers.get(key, "")).strip()
+                if raw_answers.get(key) is not None
+                else ""
+            )
 
-        grading_results = grade_quiz(answers)
+        grading_results = assessments.grade_assessment(assessment_id, answers)
         submitted_at = datetime.now()
 
         submission_id = persistence.save_submission(
@@ -156,6 +178,7 @@ def submit_quiz(payload: dict = Body(default=None)):
             grading_results=grading_results,
             email_sent=False,
             created_at=submitted_at,
+            assessment=assessment_id,
         )
 
         email_sent, email_warning = emailer.send_results_email(
@@ -165,11 +188,13 @@ def submit_quiz(payload: dict = Body(default=None)):
             recruiter_email=recruiter_email,
             grading_results=grading_results,
             submitted_at=submitted_at,
+            assessment_title=meta["display_name"],
         )
         if email_sent:
             persistence.update_email_sent(submission_id, True)
 
         return {
+            "assessment": assessment_id,
             "score_percentage": grading_results["score_percentage"],
             "correct_count": grading_results["correct_count"],
             "total_questions": grading_results["total_questions"],

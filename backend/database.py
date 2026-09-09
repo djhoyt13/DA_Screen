@@ -74,4 +74,20 @@ def init_db():
     """Create tables if they do not exist. Safe to call on every startup."""
     import backend.models  # noqa: F401 — register models on Base.metadata
 
-    Base.metadata.create_all(bind=get_engine())
+    engine = get_engine()
+    Base.metadata.create_all(bind=engine)
+    _ensure_assessment_column(engine)
+
+
+def _ensure_assessment_column(engine):
+    """Add submissions.assessment for DBs created before multi-assessment support."""
+    url = str(engine.url)
+    if not url.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        rows = conn.exec_driver_sql("PRAGMA table_info(submissions)").fetchall()
+        columns = {row[1] for row in rows}
+        if "assessment" not in columns:
+            conn.exec_driver_sql(
+                "ALTER TABLE submissions ADD COLUMN assessment VARCHAR DEFAULT 'ds'"
+            )

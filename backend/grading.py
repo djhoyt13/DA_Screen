@@ -67,22 +67,24 @@ def calculate_similarity(str1, str2):
     similarity = 1 - (distance / max_len)
     return similarity
 
-def grade_quiz(user_answers):
+def grade_quiz(user_answers, answer_key=None, text_input_questions=None):
     """Grade the quiz and return score and detailed results"""
-    answer_key = get_answer_key()
+    if answer_key is None:
+        answer_key = get_answer_key()
     total_questions = len(answer_key)
     correct_count = 0
     detailed_results = {}
     
     # Define which questions use text input (require fuzzy matching)
-    text_input_questions = [
-        'answer_Unpacking', 'answer_Loops', 'answer_Lambda_functions',
-        # 'answer_Pydantic___Validation',
-        'answer_NumPy_&_Pandas', 'answer_ThreadPool', 'answer_Virtual_ENV',
-        'answer_Docker_Build', 'answer_Docker_Start', 'answer_Docker_Stop',
-        # 'answer_Docker_Remove',
-        'answer_PyTorch_layers', 'answer_Probability_dice'
-    ]
+    if text_input_questions is None:
+        text_input_questions = [
+            'answer_Unpacking', 'answer_Loops', 'answer_Lambda_functions',
+            # 'answer_Pydantic___Validation',
+            'answer_NumPy_&_Pandas', 'answer_ThreadPool', 'answer_Virtual_ENV',
+            'answer_Docker_Build', 'answer_Docker_Start', 'answer_Docker_Stop',
+            # 'answer_Docker_Remove',
+            'answer_PyTorch_layers', 'answer_Probability_dice'
+        ]
     
     # Similarity threshold for fuzzy matching (80% similar = correct)
     SIMILARITY_THRESHOLD = 0.80
@@ -122,7 +124,7 @@ def grade_quiz(user_answers):
             'is_correct': is_correct
         }
     
-    score_percentage = (correct_count / total_questions) * 100
+    score_percentage = (correct_count / total_questions) * 100 if total_questions else 0.0
     
     return {
         'score_percentage': score_percentage,

@@ -146,6 +146,7 @@ def test_submit_200_mocked_smtp_persists_all_answers(client, mock_send_email, db
         assert len(submissions) == 1
         assert submissions[0].email == VALID_CANDIDATE["email"]
         assert submissions[0].correct_count == active_count
+        assert getattr(submissions[0], "assessment", "ds") == "ds"
         answers = session.query(Answer).filter_by(submission_id=submissions[0].id).all()
         assert len(answers) == active_count
         assert {row.question_key for row in answers} == set(QUESTION_KEYS)
