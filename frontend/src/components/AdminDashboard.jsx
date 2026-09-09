@@ -272,7 +272,7 @@ export default function AdminDashboard() {
         </p>
         <form className="admin-create-form" onSubmit={handleCreate}>
           <label className={formErrors.name ? 'has-field-error' : undefined}>
-            Name
+            Candidate name
             <input
               value={form.name}
               onChange={(event) => {
@@ -284,7 +284,7 @@ export default function AdminDashboard() {
             {formErrors.name ? <span className="field-error">{formErrors.name}</span> : null}
           </label>
           <label className={formErrors.email ? 'has-field-error' : undefined}>
-            Email
+            Candidate email
             <input
               type="email"
               value={form.email}
@@ -297,7 +297,7 @@ export default function AdminDashboard() {
             {formErrors.email ? <span className="field-error">{formErrors.email}</span> : null}
           </label>
           <label className={formErrors.phone ? 'has-field-error' : undefined}>
-            Phone
+            Candidate phone
             <input
               type="tel"
               value={form.phone}
