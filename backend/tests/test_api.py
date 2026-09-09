@@ -123,7 +123,19 @@ def test_submit_200_mocked_smtp_persists_all_answers(client, mock_send_email, db
     mock_send_email.return_value = (True, None)
     response = client.post(
         "/api/submit",
-        json={**VALID_CANDIDATE, "answers": PERFECT_ANSWERS},
+        json={
+            **VALID_CANDIDATE,
+            "answers": PERFECT_ANSWERS,
+            "timing": {
+                "opened_at": "2026-09-09T16:00:00Z",
+                "acknowledged_at": "2026-09-09T16:01:00Z",
+                "submitted_at": "2026-09-09T16:30:00Z",
+                "answers": {
+                    "answer_Unpacking": "2026-09-09T16:05:00Z",
+                    "answer_Loops": "2026-09-09T16:06:00Z",
+                },
+            },
+        },
     )
     assert response.status_code == 200
     body = response.json()
@@ -132,6 +144,7 @@ def test_submit_200_mocked_smtp_persists_all_answers(client, mock_send_email, db
     assert body["score_percentage"] == 100.0
     assert body["email_sent"] is True
     assert body["email_warning"] is None
+    assert body["timing"]["opened_at"].startswith("2026-09-09")
     assert len(body["detailed_results"]) == active_count
     assert body["detailed_results"][0]["key"] == "answer_Unpacking"
     assert body["detailed_results"][0]["status"] == "correct"
@@ -147,9 +160,15 @@ def test_submit_200_mocked_smtp_persists_all_answers(client, mock_send_email, db
         assert submissions[0].email == VALID_CANDIDATE["email"]
         assert submissions[0].correct_count == active_count
         assert getattr(submissions[0], "assessment", "ds") == "ds"
+        assert submissions[0].opened_at is not None
+        assert submissions[0].acknowledged_at is not None
+        assert submissions[0].submitted_at is not None
         answers = session.query(Answer).filter_by(submission_id=submissions[0].id).all()
         assert len(answers) == active_count
         assert {row.question_key for row in answers} == set(QUESTION_KEYS)
+        by_key = {row.question_key: row for row in answers}
+        assert by_key["answer_Unpacking"].answered_at is not None
+        assert by_key["answer_Loops"].answered_at is not None
     finally:
         session.close()
     assert db_path.exists()

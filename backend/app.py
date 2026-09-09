@@ -19,6 +19,7 @@ from fastapi.responses import JSONResponse
 
 from backend import assessments, emailer, persistence
 from backend.database import init_db
+from backend.timing import extract_timing
 from backend.validation import is_valid_email, is_valid_name, is_valid_phone
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -168,7 +169,9 @@ def submit_quiz(payload: dict = Body(default=None)):
             )
 
         grading_results = assessments.grade_assessment(assessment_id, answers)
-        submitted_at = datetime.now()
+        server_now = datetime.now()
+        timing = extract_timing(payload)
+        submitted_at = timing["submitted_at"] or server_now
 
         submission_id = persistence.save_submission(
             name=name,
@@ -177,8 +180,12 @@ def submit_quiz(payload: dict = Body(default=None)):
             recruiter_email=recruiter_email,
             grading_results=grading_results,
             email_sent=False,
-            created_at=submitted_at,
+            created_at=server_now,
             assessment=assessment_id,
+            opened_at=timing["opened_at"],
+            acknowledged_at=timing["acknowledged_at"],
+            submitted_at=submitted_at,
+            answer_timestamps=timing["answer_timestamps"],
         )
 
         email_sent, email_warning = emailer.send_results_email(
@@ -201,6 +208,15 @@ def submit_quiz(payload: dict = Body(default=None)):
             "detailed_results": _detailed_results_list(grading_results["detailed_results"]),
             "email_sent": bool(email_sent),
             "email_warning": email_warning,
+            "timing": {
+                "opened_at": timing["opened_at"].isoformat(sep=" ") if timing["opened_at"] else None,
+                "acknowledged_at": (
+                    timing["acknowledged_at"].isoformat(sep=" ")
+                    if timing["acknowledged_at"]
+                    else None
+                ),
+                "submitted_at": submitted_at.isoformat(sep=" "),
+            },
         }
     except Exception as exc:
         return JSONResponse(status_code=500, content={"error": str(exc)})

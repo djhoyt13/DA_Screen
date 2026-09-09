@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ApiError, fetchQuestions, getApiBase, submitQuiz } from './api.js';
 import { collectQuestionKeys, getTotalQuestions } from './progress.js';
+import { nowIso } from './timing.js';
 import {
   countAnswered,
   inlineFieldError,
@@ -56,6 +57,9 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
   const [candidate, setCandidate] = useState(EMPTY_CANDIDATE);
   const [fieldErrors, setFieldErrors] = useState({});
   const [answers, setAnswers] = useState({});
+  const [answerTimestamps, setAnswerTimestamps] = useState({});
+  const [openedAt, setOpenedAt] = useState(null);
+  const [acknowledgedAt, setAcknowledgedAt] = useState(null);
   const [submitErrors, setSubmitErrors] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -72,6 +76,9 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
       setLoadError('');
       setQuiz(null);
       setAnswers({});
+      setAnswerTimestamps({});
+      setOpenedAt(null);
+      setAcknowledgedAt(null);
       setSubmitted(false);
       setResults(null);
       setStatementAcknowledged(false);
@@ -80,6 +87,7 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
         const data = await fetchQuestions(assessmentId);
         if (!cancelled) {
           setQuiz(data);
+          setOpenedAt(nowIso());
           document.title = data?.title
             ? String(data.title).replace('Technical Review', 'Initial Assessment')
             : roleCopy.fallbackTitle.replace('Technical Review', 'Initial Assessment');
@@ -115,7 +123,9 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
   }
 
   function handleAnswer(key, value) {
+    const stamped = nowIso();
     setAnswers((prev) => ({ ...prev, [key]: value }));
+    setAnswerTimestamps((prev) => ({ ...prev, [key]: stamped }));
   }
 
   async function handleSubmit() {
@@ -132,6 +142,7 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
       return;
     }
 
+    const submittedAt = nowIso();
     setSubmitting(true);
     try {
       const payload = {
@@ -141,6 +152,12 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
         phone: candidate.phone.trim(),
         recruiter_email: candidate.recruiter_email.trim(),
         answers,
+        timing: {
+          opened_at: openedAt,
+          acknowledged_at: acknowledgedAt,
+          submitted_at: submittedAt,
+          answers: answerTimestamps,
+        },
       };
       const data = await submitQuiz(payload);
       setResults(data);
@@ -209,8 +226,10 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
           checked={statementAcknowledged}
           disabled={locked}
           onChange={(event) => {
-            setStatementAcknowledged(event.target.checked);
-            if (event.target.checked) {
+            const checked = event.target.checked;
+            setStatementAcknowledged(checked);
+            setAcknowledgedAt(checked ? nowIso() : null);
+            if (checked) {
               setSubmitErrors((prev) =>
                 prev.filter(
                   (message) =>

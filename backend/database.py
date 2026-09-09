@@ -76,18 +76,34 @@ def init_db():
 
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
-    _ensure_assessment_column(engine)
+    _ensure_sqlite_columns(engine)
 
 
-def _ensure_assessment_column(engine):
-    """Add submissions.assessment for DBs created before multi-assessment support."""
+def _ensure_sqlite_columns(engine):
+    """Add columns introduced after the initial schema for existing SQLite DBs."""
     url = str(engine.url)
     if not url.startswith("sqlite"):
         return
+
+    submission_columns = {
+        "assessment": "VARCHAR DEFAULT 'ds'",
+        "opened_at": "DATETIME",
+        "acknowledged_at": "DATETIME",
+        "submitted_at": "DATETIME",
+    }
+    answer_columns = {
+        "answered_at": "DATETIME",
+    }
+
     with engine.begin() as conn:
-        rows = conn.exec_driver_sql("PRAGMA table_info(submissions)").fetchall()
-        columns = {row[1] for row in rows}
-        if "assessment" not in columns:
-            conn.exec_driver_sql(
-                "ALTER TABLE submissions ADD COLUMN assessment VARCHAR DEFAULT 'ds'"
-            )
+        sub_rows = conn.exec_driver_sql("PRAGMA table_info(submissions)").fetchall()
+        sub_existing = {row[1] for row in sub_rows}
+        for name, ddl in submission_columns.items():
+            if name not in sub_existing:
+                conn.exec_driver_sql(f"ALTER TABLE submissions ADD COLUMN {name} {ddl}")
+
+        ans_rows = conn.exec_driver_sql("PRAGMA table_info(answers)").fetchall()
+        ans_existing = {row[1] for row in ans_rows}
+        for name, ddl in answer_columns.items():
+            if name not in ans_existing:
+                conn.exec_driver_sql(f"ALTER TABLE answers ADD COLUMN {name} {ddl}")

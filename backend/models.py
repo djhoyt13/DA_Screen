@@ -21,6 +21,10 @@ class Submission(Base):
     total_questions = Column(Integer, nullable=False)
     email_sent = Column(Boolean, default=False, nullable=False)
     assessment = Column(String, default="ds", nullable=False)
+    # Client-reported telemetry (ISO timestamps from the browser)
+    opened_at = Column(DateTime, nullable=True)
+    acknowledged_at = Column(DateTime, nullable=True)
+    submitted_at = Column(DateTime, nullable=True)
 
     answers = relationship("Answer", back_populates="submission")
 
@@ -34,5 +38,6 @@ class Answer(Base):
     user_answer = Column(Text, nullable=True)
     correct_answer = Column(Text, nullable=True)
     is_correct = Column(Boolean, nullable=False)
+    answered_at = Column(DateTime, nullable=True)
 
     submission = relationship("Submission", back_populates="answers")

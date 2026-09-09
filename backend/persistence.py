@@ -14,8 +14,13 @@ def save_submission(
     email_sent=False,
     created_at=None,
     assessment="ds",
+    opened_at=None,
+    acknowledged_at=None,
+    submitted_at=None,
+    answer_timestamps=None,
 ):
     """Insert a submission row plus one answers row per question. Returns the new id."""
+    answer_timestamps = answer_timestamps or {}
     session = get_session()
     try:
         submission = Submission(
@@ -29,6 +34,9 @@ def save_submission(
             total_questions=grading_results["total_questions"],
             email_sent=bool(email_sent),
             assessment=assessment or "ds",
+            opened_at=opened_at,
+            acknowledged_at=acknowledged_at,
+            submitted_at=submitted_at or created_at or datetime.now(),
         )
         session.add(submission)
         session.flush()
@@ -41,6 +49,7 @@ def save_submission(
                     user_answer=str(result.get("user_answer", "")),
                     correct_answer=str(result.get("correct_answer", "")),
                     is_correct=bool(result.get("is_correct")),
+                    answered_at=answer_timestamps.get(question_key),
                 )
             )
 
