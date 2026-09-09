@@ -309,21 +309,6 @@ export default function AdminDashboard() {
             />
             {formErrors.phone ? <span className="field-error">{formErrors.phone}</span> : null}
           </label>
-          <label className={formErrors.recruiter_email ? 'has-field-error' : undefined}>
-            Recruiter email
-            <input
-              type="email"
-              value={form.recruiter_email}
-              onChange={(event) => {
-                setForm((prev) => ({ ...prev, recruiter_email: event.target.value }));
-                setFormErrors((prev) => ({ ...prev, recruiter_email: undefined }));
-              }}
-              required
-            />
-            {formErrors.recruiter_email ? (
-              <span className="field-error">{formErrors.recruiter_email}</span>
-            ) : null}
-          </label>
           <label className={formErrors.assessment ? 'has-field-error' : undefined}>
             Assessment
             <select
@@ -339,6 +324,21 @@ export default function AdminDashboard() {
             </select>
             {formErrors.assessment ? (
               <span className="field-error">{formErrors.assessment}</span>
+            ) : null}
+          </label>
+          <label className={formErrors.recruiter_email ? 'has-field-error' : undefined}>
+            Recruiter email
+            <input
+              type="email"
+              value={form.recruiter_email}
+              onChange={(event) => {
+                setForm((prev) => ({ ...prev, recruiter_email: event.target.value }));
+                setFormErrors((prev) => ({ ...prev, recruiter_email: undefined }));
+              }}
+              required
+            />
+            {formErrors.recruiter_email ? (
+              <span className="field-error">{formErrors.recruiter_email}</span>
             ) : null}
           </label>
           <button type="submit" className="btn-primary">
