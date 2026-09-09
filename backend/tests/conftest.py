@@ -28,6 +28,12 @@ def mock_send_email():
         yield mocked
 
 
+@pytest.fixture(autouse=True)
+def mock_send_invite_email():
+    with patch("backend.emailer.send_invite_email", return_value=(True, None)) as mocked:
+        yield mocked
+
+
 @pytest.fixture
 def client():
     from fastapi.testclient import TestClient

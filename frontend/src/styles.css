@@ -440,6 +440,14 @@ p {
   margin-top: 0.5rem;
 }
 
+.invite-locked-note {
+  margin: 0.65rem 0 0;
+  color: var(--mt-text-soft);
+  font-size: 0.98rem;
+  line-height: 1.45;
+  max-width: 40rem;
+}
+
 .candidate-info {
   max-width: 50%;
   padding: 1.25rem;
@@ -447,6 +455,12 @@ p {
   border: 1px solid var(--mt-border);
   border-radius: var(--mt-radius);
   margin-top: 1rem;
+}
+
+.candidate-info.is-invite-locked input[type="text"] {
+  opacity: 0.85;
+  cursor: default;
+  color: var(--mt-text-soft);
 }
 
 .candidate-info .field {
@@ -824,6 +838,30 @@ input[type="text"]:disabled,
   margin: 1.5rem 0 2rem;
 }
 
+.admin-create-lead {
+  margin: 0.35rem 0 0;
+  color: var(--mt-text-soft);
+  max-width: 40rem;
+  line-height: 1.45;
+}
+
+.admin-create-form .field-error {
+  margin-top: 0.2rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-family: var(--mt-font-body);
+  font-size: 0.88rem;
+}
+
+.admin-create-form label.has-field-error input,
+.admin-create-form label.has-field-error select {
+  border-color: var(--mt-error);
+}
+
+.admin-email-status {
+  margin: 0.35rem 0 0;
+}
+
 .admin-list-header {
   display: flex;
   flex-wrap: wrap;
@@ -917,6 +955,13 @@ input[type="text"]:disabled,
 .admin-candidate-email {
   color: var(--mt-muted);
   font-size: 0.92rem;
+}
+
+.admin-candidate-phone {
+  color: var(--mt-cyan);
+  font-size: 0.88rem;
+  font-family: var(--mt-font-mono);
+  margin-top: 0.15rem;
 }
 
 .admin-status {

@@ -141,6 +141,7 @@ def create_invite(
     email,
     assessment,
     phone=None,
+    phone_normalized=None,
     recruiter_email=None,
     sent_at=None,
     public_app_url=None,
@@ -152,6 +153,7 @@ def create_invite(
             name=name,
             email=email,
             phone=phone or None,
+            phone_normalized=phone_normalized or None,
             recruiter_email=recruiter_email or None,
             assessment=assessment,
             sent_at=sent_at or datetime.now(),
@@ -164,6 +166,24 @@ def create_invite(
     except Exception:
         session.rollback()
         raise
+    finally:
+        session.close()
+
+
+def has_incomplete_invite_for_phone(phone_normalized):
+    """True if an incomplete invite already uses this normalized phone."""
+    if not phone_normalized:
+        return False
+    session = get_session()
+    try:
+        invite = (
+            session.query(ExamInvite)
+            .filter(ExamInvite.phone_normalized == phone_normalized)
+            .filter(ExamInvite.completed_at.is_(None))
+            .filter(ExamInvite.submission_id.is_(None))
+            .first()
+        )
+        return invite is not None
     finally:
         session.close()
 

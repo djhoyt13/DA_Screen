@@ -1,4 +1,10 @@
-export default function CandidateForm({ values, errors, onChange, disabled }) {
+export default function CandidateForm({
+  values,
+  errors,
+  onChange,
+  disabled,
+  inviteLocked = false,
+}) {
   const fields = [
     { name: 'name', label: 'Enter your name:', autoComplete: 'name' },
     { name: 'email', label: 'Enter your email:', autoComplete: 'email' },
@@ -9,9 +15,15 @@ export default function CandidateForm({ values, errors, onChange, disabled }) {
   return (
     <section className="candidate-section">
       <h2>Candidate Information</h2>
-      <div className="candidate-info">
+      {inviteLocked ? (
+        <p className="invite-locked-note">
+          Your details were provided by your recruiter and do not need to be edited.
+        </p>
+      ) : null}
+      <div className={`candidate-info${inviteLocked ? ' is-invite-locked' : ''}`}>
         {fields.map((field) => {
           const error = errors[field.name];
+          const fieldDisabled = disabled || inviteLocked;
           return (
             <div
               key={field.name}
@@ -25,7 +37,9 @@ export default function CandidateForm({ values, errors, onChange, disabled }) {
                 autoComplete={field.autoComplete}
                 value={values[field.name] || ''}
                 onChange={(event) => onChange(field.name, event.target.value)}
-                disabled={disabled}
+                disabled={fieldDisabled}
+                readOnly={inviteLocked}
+                aria-readonly={inviteLocked || undefined}
               />
               {error ? <div className="field-error">{error}</div> : null}
             </div>

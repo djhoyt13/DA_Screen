@@ -95,6 +95,9 @@ def _ensure_sqlite_columns(engine):
     answer_columns = {
         "answered_at": "DATETIME",
     }
+    invite_columns = {
+        "phone_normalized": "VARCHAR",
+    }
 
     with engine.begin() as conn:
         sub_rows = conn.exec_driver_sql("PRAGMA table_info(submissions)").fetchall()
@@ -108,3 +111,12 @@ def _ensure_sqlite_columns(engine):
         for name, ddl in answer_columns.items():
             if name not in ans_existing:
                 conn.exec_driver_sql(f"ALTER TABLE answers ADD COLUMN {name} {ddl}")
+
+        invite_rows = conn.exec_driver_sql("PRAGMA table_info(exam_invites)").fetchall()
+        if invite_rows:
+            invite_existing = {row[1] for row in invite_rows}
+            for name, ddl in invite_columns.items():
+                if name not in invite_existing:
+                    conn.exec_driver_sql(
+                        f"ALTER TABLE exam_invites ADD COLUMN {name} {ddl}"
+                    )

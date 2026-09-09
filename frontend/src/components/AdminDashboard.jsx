@@ -60,6 +60,7 @@ export default function AdminDashboard() {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [createError, setCreateError] = useState('');
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -68,6 +69,8 @@ export default function AdminDashboard() {
     assessment: 'ds',
   });
   const [createdUrl, setCreatedUrl] = useState('');
+  const [emailOutcome, setEmailOutcome] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
   const [columnFilters, setColumnFilters] = useState(EMPTY_COLUMN_FILTERS);
 
   const filtersActive = useMemo(
@@ -77,7 +80,7 @@ export default function AdminDashboard() {
 
   const filtered = useMemo(() => {
     return exams.filter((exam) => {
-      const candidateText = `${exam.name || ''} ${exam.email || ''}`;
+      const candidateText = `${exam.name || ''} ${exam.email || ''} ${exam.phone || ''}`;
       const assessmentText = assessmentLabel(exam.assessment);
       const statusText = exam.status_label || exam.status || '';
       const sentText = formatWhen(exam.sent_at);
@@ -136,11 +139,17 @@ export default function AdminDashboard() {
 
   async function handleCreate(event) {
     event.preventDefault();
-    setError('');
+    setCreateError('');
+    setFormErrors({});
     setCreatedUrl('');
+    setEmailOutcome(null);
     try {
       const created = await adminCreateExam(adminKey, form);
       setCreatedUrl(created.invite_url || '');
+      setEmailOutcome({
+        email_sent: Boolean(created.email_sent),
+        email_warning: created.email_warning || '',
+      });
       setForm({
         name: '',
         email: '',
@@ -154,7 +163,19 @@ export default function AdminDashboard() {
       const detailData = await adminExamDetail(adminKey, detailKey);
       setDetail(detailData);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to create invite');
+      if (err instanceof ApiError) {
+        const fields =
+          err.fields && typeof err.fields === 'object' ? { ...err.fields } : {};
+        setFormErrors(fields);
+        const fieldMessages = Object.values(fields).filter(Boolean).map(String);
+        const message =
+          fieldMessages.length > 0
+            ? fieldMessages.join(' ')
+            : err.message || 'Failed to send assessment';
+        setCreateError(message);
+      } else {
+        setCreateError('Failed to send assessment');
+      }
     }
   }
 
@@ -240,60 +261,91 @@ export default function AdminDashboard() {
 
       <h1>Assessment Admin</h1>
       <p className="chooser-lead">
-        Create candidate invites, copy their unique exam links, and track status through completion.
+        Send an assessment to a candidate, then track status through completion.
       </p>
 
       <section className="admin-create">
-        <h2>Create invite</h2>
+        <h2>Send assessment</h2>
+        <p className="admin-create-lead">
+          Enter the candidate&apos;s details and choose an assessment. We create their invite and
+          email them the link.
+        </p>
         <form className="admin-create-form" onSubmit={handleCreate}>
-          <label>
+          <label className={formErrors.name ? 'has-field-error' : undefined}>
             Name
             <input
               value={form.name}
-              onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+              onChange={(event) => {
+                setForm((prev) => ({ ...prev, name: event.target.value }));
+                setFormErrors((prev) => ({ ...prev, name: undefined }));
+              }}
               required
             />
+            {formErrors.name ? <span className="field-error">{formErrors.name}</span> : null}
           </label>
-          <label>
+          <label className={formErrors.email ? 'has-field-error' : undefined}>
             Email
             <input
               type="email"
               value={form.email}
-              onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+              onChange={(event) => {
+                setForm((prev) => ({ ...prev, email: event.target.value }));
+                setFormErrors((prev) => ({ ...prev, email: undefined }));
+              }}
               required
             />
+            {formErrors.email ? <span className="field-error">{formErrors.email}</span> : null}
           </label>
-          <label>
-            Phone (optional)
+          <label className={formErrors.phone ? 'has-field-error' : undefined}>
+            Phone
             <input
+              type="tel"
               value={form.phone}
-              onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
+              onChange={(event) => {
+                setForm((prev) => ({ ...prev, phone: event.target.value }));
+                setFormErrors((prev) => ({ ...prev, phone: undefined }));
+              }}
+              required
             />
+            {formErrors.phone ? <span className="field-error">{formErrors.phone}</span> : null}
           </label>
-          <label>
-            Recruiter email (optional)
+          <label className={formErrors.recruiter_email ? 'has-field-error' : undefined}>
+            Recruiter email
             <input
               type="email"
               value={form.recruiter_email}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, recruiter_email: event.target.value }))
-              }
+              onChange={(event) => {
+                setForm((prev) => ({ ...prev, recruiter_email: event.target.value }));
+                setFormErrors((prev) => ({ ...prev, recruiter_email: undefined }));
+              }}
+              required
             />
+            {formErrors.recruiter_email ? (
+              <span className="field-error">{formErrors.recruiter_email}</span>
+            ) : null}
           </label>
-          <label>
+          <label className={formErrors.assessment ? 'has-field-error' : undefined}>
             Assessment
             <select
               value={form.assessment}
-              onChange={(event) => setForm((prev) => ({ ...prev, assessment: event.target.value }))}
+              onChange={(event) => {
+                setForm((prev) => ({ ...prev, assessment: event.target.value }));
+                setFormErrors((prev) => ({ ...prev, assessment: undefined }));
+              }}
+              required
             >
               <option value="ds">Data Scientist</option>
               <option value="de">Data Engineer</option>
             </select>
+            {formErrors.assessment ? (
+              <span className="field-error">{formErrors.assessment}</span>
+            ) : null}
           </label>
           <button type="submit" className="btn-primary">
-            Create &amp; get link
+            Send assessment
           </button>
         </form>
+        {createError ? <div className="error-msg">{createError}</div> : null}
         {createdUrl ? (
           <div className="admin-link-box">
             <div className="admin-link-label">Candidate link</div>
@@ -305,6 +357,16 @@ export default function AdminDashboard() {
             >
               Copy
             </button>
+            {emailOutcome?.email_sent ? (
+              <div className="success-msg admin-email-status">
+                Assessment email sent to the candidate.
+              </div>
+            ) : (
+              <div className="warning-msg admin-email-status">
+                {emailOutcome?.email_warning ||
+                  'Email could not be sent. The invite link above still works — share it with the candidate manually.'}
+              </div>
+            )}
           </div>
         ) : null}
       </section>
@@ -428,6 +490,9 @@ export default function AdminDashboard() {
                     <td>
                       <div className="admin-candidate-name">{exam.name}</div>
                       <div className="admin-candidate-email">{exam.email}</div>
+                      {exam.phone ? (
+                        <div className="admin-candidate-phone">{exam.phone}</div>
+                      ) : null}
                     </td>
                     <td>{assessmentLabel(exam.assessment)}</td>
                     <td>

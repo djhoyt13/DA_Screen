@@ -22,8 +22,10 @@ class ExamInvite(Base):
     name = Column(String, nullable=False)
     email = Column(String, nullable=False)
     phone = Column(String, nullable=True)
+    phone_normalized = Column(String, nullable=True, index=True)
     recruiter_email = Column(String, nullable=True)
     assessment = Column(String, nullable=False, default="ds")
+
     opened_at = Column(DateTime, nullable=True)
     acknowledged_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)

@@ -17,7 +17,7 @@ def test_admin_requires_key(client, monkeypatch):
     assert response.status_code == 503
 
 
-def test_admin_create_open_ack_complete_flow(client, admin_key, mock_send_email):
+def test_admin_create_open_ack_complete_flow(client, admin_key, mock_send_invite_email):
     headers = {"X-Admin-Key": admin_key}
 
     created = client.post(
@@ -38,6 +38,13 @@ def test_admin_create_open_ack_complete_flow(client, admin_key, mock_send_email)
     assert body["row_id"] == f"invite-{body['id']}"
     assert body["token"]
     assert "/data-scientist?invite=" in body["invite_url"]
+    assert body["email_sent"] is True
+    assert body["email_warning"] is None
+    mock_send_invite_email.assert_called_once()
+    call_kwargs = mock_send_invite_email.call_args.kwargs
+    assert call_kwargs["email"] == "pat@example.com"
+    assert body["invite_url"] in call_kwargs["invite_url"]
+    assert "Data Scientist" in call_kwargs["assessment_title"]
     token = body["token"]
     invite_id = body["id"]
 
@@ -87,6 +94,129 @@ def test_admin_create_open_ack_complete_flow(client, admin_key, mock_send_email)
     by_row_id = client.get(f"/api/admin/exams/invite-{invite_id}", headers=headers)
     assert by_row_id.status_code == 200
     assert by_row_id.json()["id"] == invite_id
+
+
+def test_admin_create_requires_phone_and_recruiter(client, admin_key):
+    headers = {"X-Admin-Key": admin_key}
+    missing_phone = client.post(
+        "/api/admin/exams",
+        headers=headers,
+        json={
+            "name": "Pat Candidate",
+            "email": "pat@example.com",
+            "recruiter_email": "recruiter@example.com",
+            "assessment": "ds",
+        },
+    )
+    assert missing_phone.status_code == 400
+    assert "phone" in missing_phone.json()["fields"]
+
+    missing_recruiter = client.post(
+        "/api/admin/exams",
+        headers=headers,
+        json={
+            "name": "Pat Candidate",
+            "email": "pat@example.com",
+            "phone": "5551234567",
+            "assessment": "ds",
+        },
+    )
+    assert missing_recruiter.status_code == 400
+    assert "recruiter_email" in missing_recruiter.json()["fields"]
+
+
+def test_admin_create_duplicate_incomplete_phone(client, admin_key, mock_send_invite_email):
+    headers = {"X-Admin-Key": admin_key}
+    payload = {
+        "name": "First Candidate",
+        "email": "first@example.com",
+        "phone": "(555) 123-4567",
+        "recruiter_email": "recruiter@example.com",
+        "assessment": "ds",
+    }
+    first = client.post("/api/admin/exams", headers=headers, json=payload)
+    assert first.status_code == 200
+
+    second = client.post(
+        "/api/admin/exams",
+        headers=headers,
+        json={
+            **payload,
+            "name": "Second Candidate",
+            "email": "second@example.com",
+            "phone": "+1-555-123-4567",
+        },
+    )
+    assert second.status_code == 400
+    assert "phone" in second.json()["fields"]
+
+
+def test_admin_create_allows_reinvite_after_complete(client, admin_key, mock_send_invite_email):
+    headers = {"X-Admin-Key": admin_key}
+    created = client.post(
+        "/api/admin/exams",
+        headers=headers,
+        json={
+            "name": "Pat Candidate",
+            "email": "pat@example.com",
+            "phone": "5551234567",
+            "recruiter_email": "recruiter@example.com",
+            "assessment": "ds",
+        },
+    )
+    token = created.json()["token"]
+    submit = client.post(
+        "/api/submit",
+        json={
+            **VALID_CANDIDATE,
+            "name": "Pat Candidate",
+            "email": "pat@example.com",
+            "phone": "5551234567",
+            "assessment": "ds",
+            "invite_token": token,
+            "answers": PERFECT_ANSWERS,
+        },
+    )
+    assert submit.status_code == 200
+
+    again = client.post(
+        "/api/admin/exams",
+        headers=headers,
+        json={
+            "name": "Pat Candidate",
+            "email": "pat2@example.com",
+            "phone": "5551234567",
+            "recruiter_email": "recruiter@example.com",
+            "assessment": "ds",
+        },
+    )
+    assert again.status_code == 200
+    assert again.json()["email_sent"] is True
+
+
+def test_admin_create_smtp_failure_still_200(client, admin_key, mock_send_invite_email):
+    headers = {"X-Admin-Key": admin_key}
+    mock_send_invite_email.return_value = (
+        False,
+        "Email sending failed: smtp down. Invite saved; email not sent.",
+    )
+    created = client.post(
+        "/api/admin/exams",
+        headers=headers,
+        json={
+            "name": "Pat Candidate",
+            "email": "pat@example.com",
+            "phone": "5559998888",
+            "recruiter_email": "recruiter@example.com",
+            "assessment": "ds",
+        },
+    )
+    assert created.status_code == 200
+    body = created.json()
+    assert body["email_sent"] is False
+    assert body["email_warning"]
+    assert body["token"]
+    assert body["invite_url"]
 
 
 def test_admin_list_includes_orphan_submission(client, admin_key, mock_send_email):

@@ -23,7 +23,7 @@ from backend import assessments, emailer, invites, persistence
 from backend.admin_auth import require_admin
 from backend.database import init_db
 from backend.timing import extract_timing, parse_iso_datetime
-from backend.validation import is_valid_email, is_valid_name, is_valid_phone
+from backend.validation import is_valid_email, is_valid_name, is_valid_phone, normalize_phone
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(REPO_ROOT / ".env")
@@ -214,23 +214,49 @@ def admin_create_exam(
         fields["email"] = "Email is required"
     elif not is_valid_email(email):
         fields["email"] = "Please enter a valid email address"
-    if phone and not is_valid_phone(phone):
+    if not phone:
+        fields["phone"] = "Phone is required"
+    elif not is_valid_phone(phone):
         fields["phone"] = "Please enter a valid phone number (10-14 digits, can include country code)"
-    if recruiter_email and not is_valid_email(recruiter_email):
+    if not recruiter_email:
+        fields["recruiter_email"] = "Recruiter's email is required"
+    elif not is_valid_email(recruiter_email):
         fields["recruiter_email"] = "Please enter a valid recruiter email address"
     if assessment_id is None:
         fields["assessment"] = "Assessment must be ds or de"
     if fields:
         return _validation_error(fields)
 
+    phone_normalized = normalize_phone(phone)
+    if invites.has_incomplete_invite_for_phone(phone_normalized):
+        return _validation_error(
+            {
+                "phone": "An incomplete invite already exists for this phone number",
+            }
+        )
+
     created = invites.create_invite(
         name=name,
         email=email,
         assessment=assessment_id,
-        phone=phone or None,
-        recruiter_email=recruiter_email or None,
+        phone=phone,
+        phone_normalized=phone_normalized,
+        recruiter_email=recruiter_email,
         public_app_url=_public_app_url(),
     )
+
+    meta = assessments.get_assessment_meta(assessment_id)
+    assessment_title = meta["display_name"] if meta else "Initial Assessment"
+    email_sent, email_warning = emailer.send_invite_email(
+        name=name,
+        email=email,
+        phone=phone,
+        recruiter_email=recruiter_email,
+        invite_url=created.get("invite_url") or "",
+        assessment_title=assessment_title,
+    )
+    created["email_sent"] = bool(email_sent)
+    created["email_warning"] = email_warning
     return created
 
 

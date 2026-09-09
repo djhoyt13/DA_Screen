@@ -162,6 +162,9 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
   const assessmentOpen = statementAcknowledged && !locked;
 
   function handleCandidateChange(field, value) {
+    if (inviteToken) {
+      return;
+    }
     setCandidate((prev) => ({ ...prev, [field]: value }));
     setFieldErrors((prev) => ({ ...prev, [field]: inlineFieldError(field, value) }));
   }
@@ -315,6 +318,7 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
           errors={fieldErrors}
           onChange={handleCandidateChange}
           disabled={!assessmentOpen}
+          inviteLocked={Boolean(inviteToken)}
         />
 
         {loading ? <p className="status-copy">Loading questions…</p> : null}

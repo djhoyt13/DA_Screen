@@ -262,3 +262,189 @@ def send_results_email(
         return True, None
     except Exception as email_error:
         return False, f"Email sending failed: {str(email_error)}. Results saved to database."
+
+
+def build_invite_email_html(
+    name,
+    email,
+    phone,
+    recruiter_email,
+    invite_url,
+    assessment_title="Data Scientist Initial Assessment",
+):
+    """MANTECH dark-theme HTML candidate invite with CTA to the exam link."""
+    safe_title = escape(str(assessment_title))
+    safe_name = escape(str(name))
+    safe_email = escape(str(email))
+    safe_phone = escape(str(phone))
+    safe_recruiter = escape(str(recruiter_email))
+    safe_url = escape(str(invite_url), quote=True)
+    display_url = escape(str(invite_url))
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{safe_title} Invitation</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0b1018;color:#f2f4f7;font-family:Montserrat,Helvetica Neue,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0b1018;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background-color:#0b1018;">
+          <!-- Brand bar -->
+          <tr>
+            <td style="padding:0 0 20px 0;border-bottom:2px solid #df2327;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="vertical-align:middle;">
+                    <table role="presentation" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="vertical-align:middle;padding-right:12px;">
+                          <img src="cid:mantech-mark" alt="MANTECH" width="42" height="42" style="display:block;border:0;border-radius:50%;" />
+                        </td>
+                        <td style="vertical-align:middle;">
+                          <div style="font-family:Barlow Condensed,Arial Narrow,Impact,sans-serif;font-size:22px;font-weight:700;letter-spacing:0.08em;color:#ffffff;line-height:1;">MANTECH</div>
+                          <div style="font-family:Montserrat,Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#df2327;margin-top:4px;">Always Advancing&#8482;</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td align="right" style="vertical-align:middle;">
+                    <span style="display:inline-block;padding:8px 14px;border:1px solid #75d8f0;border-radius:999px;font-family:Barlow Condensed,Arial Narrow,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#75d8f0;">Initial Assessment</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Title -->
+          <tr>
+            <td style="padding:28px 0 8px 0;">
+              <h1 style="margin:0;font-family:Barlow Condensed,Arial Narrow,Impact,sans-serif;font-size:34px;font-weight:700;letter-spacing:0.02em;color:#ffffff;line-height:1.15;">
+                You&#8217;re invited
+              </h1>
+              <div style="width:120px;height:3px;background:linear-gradient(90deg,#df2327,rgba(223,35,39,0));margin-top:12px;"></div>
+              <p style="margin:14px 0 0 0;color:#8b95a8;font-size:14px;line-height:1.5;">
+                Hello {safe_name}, you have been invited to complete the
+                <strong style="color:#f2f4f7;">{safe_title}</strong>.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Candidate info -->
+          <tr>
+            <td style="padding:24px 0 8px 0;">
+              <h2 style="margin:0 0 14px 0;font-family:Barlow Condensed,Arial Narrow,sans-serif;font-size:22px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#75d8f0;">
+                Your Details
+              </h2>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#161d2b;border:1px solid #2a3548;border-radius:6px;border-left:4px solid #df2327;">
+                <tr>
+                  <td style="padding:12px 16px;width:160px;font-family:Barlow Condensed,Arial Narrow,sans-serif;font-size:14px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#75d8f0;border-bottom:1px solid #2a3548;">Name</td>
+                  <td style="padding:12px 16px;color:#f2f4f7;border-bottom:1px solid #2a3548;">{safe_name}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;font-family:Barlow Condensed,Arial Narrow,sans-serif;font-size:14px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#75d8f0;border-bottom:1px solid #2a3548;">Email</td>
+                  <td style="padding:12px 16px;color:#f2f4f7;border-bottom:1px solid #2a3548;">{safe_email}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;font-family:Barlow Condensed,Arial Narrow,sans-serif;font-size:14px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#75d8f0;border-bottom:1px solid #2a3548;">Phone</td>
+                  <td style="padding:12px 16px;color:#f2f4f7;border-bottom:1px solid #2a3548;">{safe_phone}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px;font-family:Barlow Condensed,Arial Narrow,sans-serif;font-size:14px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#75d8f0;">Assessment</td>
+                  <td style="padding:12px 16px;color:#f2f4f7;">{safe_title}</td>
+                </tr>
+              </table>
+              <p style="margin:14px 0 0 0;color:#8b95a8;font-size:14px;line-height:1.5;">
+                Your recruiter contact is <strong style="color:#f2f4f7;">{safe_recruiter}</strong>.
+                Your details will be pre-filled when you open the link.
+              </p>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td style="padding:28px 0 8px 0;" align="center">
+              <a href="{safe_url}" style="display:inline-block;padding:16px 28px;background-color:#df2327;color:#ffffff;text-decoration:none;font-family:Barlow Condensed,Arial Narrow,sans-serif;font-size:18px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;border-radius:6px;">
+                Start Assessment
+              </a>
+              <p style="margin:16px 0 0 0;color:#8b95a8;font-size:12px;line-height:1.5;word-break:break-all;">
+                Or open this link:<br />
+                <a href="{safe_url}" style="color:#75d8f0;">{display_url}</a>
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:28px 0 8px 0;border-top:1px solid #2a3548;">
+              <p style="margin:0;color:#8b95a8;font-size:12px;line-height:1.5;">
+                Please do not share this link. It is unique to you and opens the assessment with your information already filled in.
+                MANTECH {safe_title} &mdash; this assessment is one data point in the hiring decision and is not a pass/fail exam.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+
+def send_invite_email(
+    name,
+    email,
+    phone,
+    recruiter_email,
+    invite_url,
+    assessment_title="Data Scientist Initial Assessment",
+):
+    """Email the candidate their unique exam invite link.
+
+    Returns (email_sent, email_warning). Never raises for SMTP/credential failures.
+    Never logs SENDER_PASSWORD.
+    """
+    sender_email = os.getenv("SENDER_EMAIL")
+    sender_password = os.getenv("SENDER_PASSWORD")
+
+    if not sender_email or not sender_password:
+        return False, "Email credentials not configured. Invite saved; email not sent."
+
+    try:
+        email_html = build_invite_email_html(
+            name,
+            email,
+            phone,
+            recruiter_email,
+            invite_url,
+            assessment_title=assessment_title,
+        )
+        msg = MIMEMultipart("related")
+        msg["From"] = sender_email
+        msg["To"] = email
+        msg["Subject"] = f"{assessment_title} — Invitation for {name}"
+
+        alt = MIMEMultipart("alternative")
+        msg.attach(alt)
+        alt.attach(MIMEText(email_html, "html", "utf-8"))
+
+        if MANTECH_MARK.is_file():
+            with open(MANTECH_MARK, "rb") as logo_file:
+                logo = MIMEImage(logo_file.read(), _subtype="png")
+            logo.add_header("Content-ID", "<mantech-mark>")
+            logo.add_header("Content-Disposition", "inline", filename="mantech-m.png")
+            msg.attach(logo)
+
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, email, msg.as_string())
+        return True, None
+    except Exception as email_error:
+        return (
+            False,
+            f"Email sending failed: {str(email_error)}. Invite saved; email not sent.",
+        )
