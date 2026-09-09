@@ -15,16 +15,48 @@ const STATUS_CLASS = {
   completed: 'status-completed',
 };
 
+const EMPTY_COLUMN_FILTERS = {
+  candidate: '',
+  assessment: '',
+  status: '',
+  sent: '',
+  opened: '',
+  completed: '',
+  score: '',
+};
+
 function formatWhen(value) {
   if (!value) return '—';
   return String(value).replace('T', ' ').slice(0, 19);
+}
+
+function assessmentLabel(assessment) {
+  return assessment === 'de' ? 'Data Engineer' : 'Data Scientist';
+}
+
+function formatScore(value) {
+  if (value == null || value === '') return '—';
+  const num = Number(value);
+  if (Number.isNaN(num)) return '—';
+  return `${num.toFixed(1)}%`;
+}
+
+function examRowKey(exam) {
+  return exam.row_id || (exam.id != null ? String(exam.id) : '');
+}
+
+function matchesFilter(haystack, needle) {
+  if (!needle.trim()) return true;
+  return String(haystack ?? '')
+    .toLowerCase()
+    .includes(needle.trim().toLowerCase());
 }
 
 export default function AdminDashboard() {
   const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem(ADMIN_KEY_STORAGE) || '');
   const [keyInput, setKeyInput] = useState(adminKey);
   const [exams, setExams] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedKey, setSelectedKey] = useState(null);
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -36,12 +68,34 @@ export default function AdminDashboard() {
     assessment: 'ds',
   });
   const [createdUrl, setCreatedUrl] = useState('');
-  const [filter, setFilter] = useState('all');
+  const [columnFilters, setColumnFilters] = useState(EMPTY_COLUMN_FILTERS);
+
+  const filtersActive = useMemo(
+    () => Object.values(columnFilters).some((value) => value.trim() !== ''),
+    [columnFilters]
+  );
 
   const filtered = useMemo(() => {
-    if (filter === 'all') return exams;
-    return exams.filter((exam) => exam.status === filter);
-  }, [exams, filter]);
+    return exams.filter((exam) => {
+      const candidateText = `${exam.name || ''} ${exam.email || ''}`;
+      const assessmentText = assessmentLabel(exam.assessment);
+      const statusText = exam.status_label || exam.status || '';
+      const sentText = formatWhen(exam.sent_at);
+      const openedText = formatWhen(exam.opened_at);
+      const completedText = formatWhen(exam.completed_at);
+      const scoreText = formatScore(exam.score_percentage);
+
+      return (
+        matchesFilter(candidateText, columnFilters.candidate) &&
+        matchesFilter(assessmentText, columnFilters.assessment) &&
+        matchesFilter(statusText, columnFilters.status) &&
+        matchesFilter(sentText, columnFilters.sent) &&
+        matchesFilter(openedText, columnFilters.opened) &&
+        matchesFilter(completedText, columnFilters.completed) &&
+        matchesFilter(scoreText, columnFilters.score)
+      );
+    });
+  }, [exams, columnFilters]);
 
   async function loadExams(key = adminKey) {
     if (!key) return;
@@ -95,24 +149,29 @@ export default function AdminDashboard() {
         assessment: form.assessment,
       });
       await loadExams();
-      setSelectedId(created.id);
-      const detailData = await adminExamDetail(adminKey, created.id);
+      const detailKey = created.row_id || String(created.id);
+      setSelectedKey(detailKey);
+      const detailData = await adminExamDetail(adminKey, detailKey);
       setDetail(detailData);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to create invite');
     }
   }
 
-  async function openDetail(id) {
-    setSelectedId(id);
+  async function openDetail(rowKey) {
+    setSelectedKey(rowKey);
     setError('');
     try {
-      const data = await adminExamDetail(adminKey, id);
+      const data = await adminExamDetail(adminKey, rowKey);
       setDetail(data);
     } catch (err) {
       setDetail(null);
       setError(err instanceof ApiError ? err.message : 'Failed to load detail');
     }
+  }
+
+  function updateColumnFilter(key, value) {
+    setColumnFilters((prev) => ({ ...prev, [key]: value }));
   }
 
   if (!adminKey) {
@@ -169,6 +228,8 @@ export default function AdminDashboard() {
               setAdminKey('');
               setDetail(null);
               setExams([]);
+              setSelectedKey(null);
+              setColumnFilters(EMPTY_COLUMN_FILTERS);
             }}
           >
             Sign out
@@ -252,22 +313,15 @@ export default function AdminDashboard() {
         <div className="admin-list-header">
           <h2>Exam status</h2>
           <div className="admin-filters">
-            {[
-              ['all', 'All'],
-              ['sent', 'Sent'],
-              ['opened', 'Opened'],
-              ['opened_but_not_completed', 'In progress'],
-              ['completed', 'Completed'],
-            ].map(([value, label]) => (
+            {filtersActive ? (
               <button
-                key={value}
                 type="button"
-                className={`admin-filter${filter === value ? ' is-active' : ''}`}
-                onClick={() => setFilter(value)}
+                className="brand-link"
+                onClick={() => setColumnFilters(EMPTY_COLUMN_FILTERS)}
               >
-                {label}
+                Clear filters
               </button>
-            ))}
+            ) : null}
             <button type="button" className="brand-link" onClick={() => loadExams()}>
               Refresh
             </button>
@@ -287,33 +341,114 @@ export default function AdminDashboard() {
                 <th>Sent</th>
                 <th>Opened</th>
                 <th>Completed</th>
+                <th>Score</th>
+              </tr>
+              <tr className="admin-filter-row">
+                <th>
+                  <input
+                    type="search"
+                    className="admin-col-filter"
+                    placeholder="Filter…"
+                    aria-label="Filter candidate"
+                    value={columnFilters.candidate}
+                    onChange={(event) => updateColumnFilter('candidate', event.target.value)}
+                  />
+                </th>
+                <th>
+                  <input
+                    type="search"
+                    className="admin-col-filter"
+                    placeholder="Filter…"
+                    aria-label="Filter assessment"
+                    value={columnFilters.assessment}
+                    onChange={(event) => updateColumnFilter('assessment', event.target.value)}
+                  />
+                </th>
+                <th>
+                  <input
+                    type="search"
+                    className="admin-col-filter"
+                    placeholder="Filter…"
+                    aria-label="Filter status"
+                    value={columnFilters.status}
+                    onChange={(event) => updateColumnFilter('status', event.target.value)}
+                  />
+                </th>
+                <th>
+                  <input
+                    type="search"
+                    className="admin-col-filter"
+                    placeholder="Filter…"
+                    aria-label="Filter sent"
+                    value={columnFilters.sent}
+                    onChange={(event) => updateColumnFilter('sent', event.target.value)}
+                  />
+                </th>
+                <th>
+                  <input
+                    type="search"
+                    className="admin-col-filter"
+                    placeholder="Filter…"
+                    aria-label="Filter opened"
+                    value={columnFilters.opened}
+                    onChange={(event) => updateColumnFilter('opened', event.target.value)}
+                  />
+                </th>
+                <th>
+                  <input
+                    type="search"
+                    className="admin-col-filter"
+                    placeholder="Filter…"
+                    aria-label="Filter completed"
+                    value={columnFilters.completed}
+                    onChange={(event) => updateColumnFilter('completed', event.target.value)}
+                  />
+                </th>
+                <th>
+                  <input
+                    type="search"
+                    className="admin-col-filter"
+                    placeholder="Filter…"
+                    aria-label="Filter score"
+                    value={columnFilters.score}
+                    onChange={(event) => updateColumnFilter('score', event.target.value)}
+                  />
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((exam) => (
-                <tr
-                  key={exam.id}
-                  className={selectedId === exam.id ? 'is-selected' : undefined}
-                  onClick={() => openDetail(exam.id)}
-                >
-                  <td>
-                    <div className="admin-candidate-name">{exam.name}</div>
-                    <div className="admin-candidate-email">{exam.email}</div>
-                  </td>
-                  <td>{exam.assessment === 'de' ? 'Data Engineer' : 'Data Scientist'}</td>
-                  <td>
-                    <span className={`admin-status ${STATUS_CLASS[exam.status] || ''}`}>
-                      {exam.status_label}
-                    </span>
-                  </td>
-                  <td>{formatWhen(exam.sent_at)}</td>
-                  <td>{formatWhen(exam.opened_at)}</td>
-                  <td>{formatWhen(exam.completed_at)}</td>
-                </tr>
-              ))}
+              {filtered.map((exam) => {
+                const rowKey = examRowKey(exam);
+                return (
+                  <tr
+                    key={rowKey}
+                    className={selectedKey === rowKey ? 'is-selected' : undefined}
+                    onClick={() => openDetail(rowKey)}
+                  >
+                    <td>
+                      <div className="admin-candidate-name">{exam.name}</div>
+                      <div className="admin-candidate-email">{exam.email}</div>
+                    </td>
+                    <td>{assessmentLabel(exam.assessment)}</td>
+                    <td>
+                      <span className={`admin-status ${STATUS_CLASS[exam.status] || ''}`}>
+                        {exam.status_label}
+                      </span>
+                    </td>
+                    <td>{formatWhen(exam.sent_at)}</td>
+                    <td>{formatWhen(exam.opened_at)}</td>
+                    <td>{formatWhen(exam.completed_at)}</td>
+                    <td>{formatScore(exam.score_percentage)}</td>
+                  </tr>
+                );
+              })}
               {!filtered.length && !loading ? (
                 <tr>
-                  <td colSpan={6}>No exams yet. Create an invite to get started.</td>
+                  <td colSpan={7}>
+                    {exams.length && filtersActive
+                      ? 'No exams match the current filters.'
+                      : 'No exams yet. Create an invite or wait for past submissions to appear.'}
+                  </td>
                 </tr>
               ) : null}
             </tbody>
@@ -333,7 +468,7 @@ export default function AdminDashboard() {
             {detail.email}
             {detail.phone ? ` · ${detail.phone}` : ''}
             {' · '}
-            {detail.assessment === 'de' ? 'Data Engineer' : 'Data Scientist'}
+            {assessmentLabel(detail.assessment)}
           </p>
           {detail.invite_url ? (
             <div className="admin-link-box">

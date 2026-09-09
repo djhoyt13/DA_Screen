@@ -211,8 +211,8 @@ export async function adminCreateExam(adminKey, payload) {
   return data;
 }
 
-export async function adminExamDetail(adminKey, inviteId) {
-  const url = `${getApiBase()}/api/admin/exams/${encodeURIComponent(inviteId)}`;
+export async function adminExamDetail(adminKey, examKey) {
+  const url = `${getApiBase()}/api/admin/exams/${encodeURIComponent(examKey)}`;
   const response = await fetchWithTimeout(
     url,
     { method: 'GET', headers: adminHeaders(adminKey) },

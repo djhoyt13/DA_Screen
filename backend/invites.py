@@ -18,6 +18,9 @@ STATUS_LABELS = {
     STATUS_COMPLETED: "Completed",
 }
 
+SOURCE_INVITE = "invite"
+SOURCE_SUBMISSION = "submission"
+
 
 def compute_status(invite):
     if invite.completed_at or invite.submission_id:
@@ -33,7 +36,44 @@ def _iso(value):
     return value.isoformat(sep=" ") if value else None
 
 
-def invite_to_dict(invite, *, include_token=False, public_app_url=None):
+def _score_fields(submission):
+    if submission is None:
+        return {
+            "score_percentage": None,
+            "correct_count": None,
+            "total_questions": None,
+        }
+    return {
+        "score_percentage": submission.score_percentage,
+        "correct_count": submission.correct_count,
+        "total_questions": submission.total_questions,
+    }
+
+
+def _results_payload(submission, answers):
+    return {
+        "submission_id": submission.id,
+        "score_percentage": submission.score_percentage,
+        "correct_count": submission.correct_count,
+        "total_questions": submission.total_questions,
+        "email_sent": bool(submission.email_sent),
+        "opened_at": _iso(submission.opened_at),
+        "acknowledged_at": _iso(submission.acknowledged_at),
+        "submitted_at": _iso(submission.submitted_at or submission.created_at),
+        "detailed_results": [
+            {
+                "key": row.question_key,
+                "status": "correct" if row.is_correct else "incorrect",
+                "user_answer": row.user_answer,
+                "correct_answer": row.correct_answer,
+                "answered_at": _iso(row.answered_at),
+            }
+            for row in answers
+        ],
+    }
+
+
+def invite_to_dict(invite, *, include_token=False, public_app_url=None, submission=None):
     status = compute_status(invite)
     path = "/data-scientist" if invite.assessment == "ds" else "/data-engineer"
     invite_url = None
@@ -41,6 +81,8 @@ def invite_to_dict(invite, *, include_token=False, public_app_url=None):
         base = public_app_url.rstrip("/")
         invite_url = f"{base}{path}?invite={invite.token}"
     data = {
+        "row_id": f"invite-{invite.id}",
+        "source": SOURCE_INVITE,
         "id": invite.id,
         "name": invite.name,
         "email": invite.email,
@@ -55,10 +97,43 @@ def invite_to_dict(invite, *, include_token=False, public_app_url=None):
         "completed_at": _iso(invite.completed_at),
         "submission_id": invite.submission_id,
         "invite_url": invite_url,
+        **_score_fields(submission),
     }
     if include_token:
         data["token"] = invite.token
     return data
+
+
+def submission_to_exam_row(submission):
+    completed = submission.submitted_at or submission.created_at
+    return {
+        "row_id": f"submission-{submission.id}",
+        "source": SOURCE_SUBMISSION,
+        "id": submission.id,
+        "name": submission.name,
+        "email": submission.email,
+        "phone": submission.phone or "",
+        "recruiter_email": submission.recruiter_email or "",
+        "assessment": submission.assessment or "ds",
+        "status": STATUS_COMPLETED,
+        "status_label": STATUS_LABELS[STATUS_COMPLETED],
+        "sent_at": None,
+        "opened_at": _iso(submission.opened_at),
+        "acknowledged_at": _iso(submission.acknowledged_at),
+        "completed_at": _iso(completed),
+        "submission_id": submission.id,
+        "invite_url": None,
+        **_score_fields(submission),
+    }
+
+
+def _exam_sort_key(row):
+    """Newest activity first; prefer completed/submitted, then sent, then id."""
+    for key in ("completed_at", "sent_at"):
+        value = row.get(key)
+        if value:
+            return (value, row.get("id") or 0)
+    return ("", row.get("id") or 0)
 
 
 def create_invite(
@@ -94,17 +169,46 @@ def create_invite(
 
 
 def list_invites(public_app_url=None):
+    """Backward-compatible alias for unified exam list."""
+    return list_exams(public_app_url=public_app_url)
+
+
+def list_exams(public_app_url=None):
+    """All invites plus orphan submissions (not linked from any invite)."""
     session = get_session()
     try:
-        rows = (
-            session.query(ExamInvite)
-            .order_by(ExamInvite.sent_at.desc(), ExamInvite.id.desc())
-            .all()
-        )
-        return [
-            invite_to_dict(row, include_token=True, public_app_url=public_app_url)
-            for row in rows
-        ]
+        invites = session.query(ExamInvite).all()
+        linked_ids = {inv.submission_id for inv in invites if inv.submission_id}
+
+        submissions_by_id = {}
+        if linked_ids:
+            for sub in session.query(Submission).filter(Submission.id.in_(linked_ids)):
+                submissions_by_id[sub.id] = sub
+
+        rows = []
+        for invite in invites:
+            linked = (
+                submissions_by_id.get(invite.submission_id)
+                if invite.submission_id
+                else None
+            )
+            rows.append(
+                invite_to_dict(
+                    invite,
+                    include_token=True,
+                    public_app_url=public_app_url,
+                    submission=linked,
+                )
+            )
+
+        orphan_query = session.query(Submission)
+        if linked_ids:
+            orphan_query = orphan_query.filter(~Submission.id.in_(linked_ids))
+        for submission in orphan_query.all():
+            rows.append(submission_to_exam_row(submission))
+
+        rows.sort(key=_exam_sort_key, reverse=True)
+        return rows
     finally:
         session.close()
 
@@ -210,6 +314,26 @@ def mark_completed(token, submission_id, completed_at=None):
         session.close()
 
 
+def parse_exam_key(exam_key):
+    """Parse legacy invite id or row_id into (source, pk). Returns None if invalid."""
+    key = str(exam_key).strip()
+    if not key:
+        return None
+    if key.isdigit():
+        return (SOURCE_INVITE, int(key))
+    if key.startswith("invite-"):
+        rest = key[len("invite-") :]
+        if rest.isdigit():
+            return (SOURCE_INVITE, int(rest))
+        return None
+    if key.startswith("submission-"):
+        rest = key[len("submission-") :]
+        if rest.isdigit():
+            return (SOURCE_SUBMISSION, int(rest))
+        return None
+    return None
+
+
 def get_invite_detail(invite_id):
     """Invite summary plus graded results when completed."""
     session = get_session()
@@ -217,7 +341,8 @@ def get_invite_detail(invite_id):
         invite = session.get(ExamInvite, invite_id)
         if invite is None:
             return None
-        detail = invite_to_dict(invite, include_token=True)
+        submission = None
+        answers = []
         if invite.submission_id:
             submission = session.get(Submission, invite.submission_id)
             if submission:
@@ -227,26 +352,54 @@ def get_invite_detail(invite_id):
                     .order_by(Answer.id)
                     .all()
                 )
-                detail["results"] = {
-                    "submission_id": submission.id,
-                    "score_percentage": submission.score_percentage,
-                    "correct_count": submission.correct_count,
-                    "total_questions": submission.total_questions,
-                    "email_sent": bool(submission.email_sent),
-                    "opened_at": _iso(submission.opened_at),
-                    "acknowledged_at": _iso(submission.acknowledged_at),
-                    "submitted_at": _iso(submission.submitted_at or submission.created_at),
-                    "detailed_results": [
-                        {
-                            "key": row.question_key,
-                            "status": "correct" if row.is_correct else "incorrect",
-                            "user_answer": row.user_answer,
-                            "correct_answer": row.correct_answer,
-                            "answered_at": _iso(row.answered_at),
-                        }
-                        for row in answers
-                    ],
-                }
+        detail = invite_to_dict(
+            invite, include_token=True, submission=submission
+        )
+        if submission:
+            detail["results"] = _results_payload(submission, answers)
         return detail
     finally:
         session.close()
+
+
+def get_submission_exam_detail(submission_id):
+    """Orphan (or any) submission as an admin exam detail row."""
+    session = get_session()
+    try:
+        submission = session.get(Submission, submission_id)
+        if submission is None:
+            return None
+        answers = (
+            session.query(Answer)
+            .filter(Answer.submission_id == submission.id)
+            .order_by(Answer.id)
+            .all()
+        )
+        detail = submission_to_exam_row(submission)
+        detail["results"] = _results_payload(submission, answers)
+        return detail
+    finally:
+        session.close()
+
+
+def get_exam_detail(exam_key, public_app_url=None):
+    """Detail for invite-{n}, submission-{n}, or legacy numeric invite id."""
+    parsed = parse_exam_key(exam_key)
+    if parsed is None:
+        return None
+    source, pk = parsed
+    if source == SOURCE_INVITE:
+        detail = get_invite_detail(pk)
+        if detail is None:
+            return None
+        if public_app_url and detail.get("token"):
+            path = (
+                "/data-scientist"
+                if detail.get("assessment") == "ds"
+                else "/data-engineer"
+            )
+            detail["invite_url"] = (
+                f"{public_app_url.rstrip('/')}{path}?invite={detail['token']}"
+            )
+        return detail
+    return get_submission_exam_detail(pk)

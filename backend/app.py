@@ -183,7 +183,7 @@ def admin_list_exams(
     auth_error = require_admin(x_admin_key=x_admin_key, admin_key=admin_key)
     if auth_error is not None:
         return auth_error
-    rows = invites.list_invites(public_app_url=_public_app_url())
+    rows = invites.list_exams(public_app_url=_public_app_url())
     return {"exams": rows}
 
 
@@ -234,22 +234,18 @@ def admin_create_exam(
     return created
 
 
-@app.get("/api/admin/exams/{invite_id}")
+@app.get("/api/admin/exams/{exam_key}")
 def admin_exam_detail(
-    invite_id: int,
+    exam_key: str,
     x_admin_key: Optional[str] = Header(default=None, alias="X-Admin-Key"),
     admin_key: Optional[str] = Query(default=None),
 ):
     auth_error = require_admin(x_admin_key=x_admin_key, admin_key=admin_key)
     if auth_error is not None:
         return auth_error
-    detail = invites.get_invite_detail(invite_id)
+    detail = invites.get_exam_detail(exam_key, public_app_url=_public_app_url())
     if detail is None:
         return JSONResponse(status_code=404, content={"error": "Exam not found"})
-    path = "/data-scientist" if detail.get("assessment") == "ds" else "/data-engineer"
-    token = detail.get("token")
-    if token:
-        detail["invite_url"] = f"{_public_app_url()}{path}?invite={token}"
     return detail
 
 
