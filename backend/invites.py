@@ -128,9 +128,10 @@ def submission_to_exam_row(submission):
 
 
 def _exam_sort_key(row):
-    """Newest sent_at first; fall back to completed_at for orphan submissions."""
-    value = row.get("sent_at") or row.get("completed_at") or ""
-    return (value, row.get("id") or 0)
+    """Newest sent_at first; rows with null sent_at sort last."""
+    sent = row.get("sent_at") or ""
+    has_sent = 1 if sent else 0
+    return (has_sent, sent, row.get("id") or 0)
 
 
 def create_invite(

@@ -100,8 +100,13 @@ export default function AdminDashboard() {
     });
 
     return [...rows].sort((a, b) => {
-      const aSent = a.sent_at || a.completed_at || '';
-      const bSent = b.sent_at || b.completed_at || '';
+      const aSent = a.sent_at || '';
+      const bSent = b.sent_at || '';
+      const aHasSent = Boolean(aSent);
+      const bHasSent = Boolean(bSent);
+      if (aHasSent !== bHasSent) {
+        return aHasSent ? -1 : 1;
+      }
       if (aSent === bSent) {
         return (b.id || 0) - (a.id || 0);
       }
