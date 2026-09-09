@@ -6,9 +6,9 @@ export default function CandidateForm({
   inviteLocked = false,
 }) {
   const fields = [
-    { name: 'name', label: 'Enter your name:', autoComplete: 'name' },
-    { name: 'email', label: 'Enter your email:', autoComplete: 'email' },
-    { name: 'phone', label: 'Enter your phone number:', autoComplete: 'tel' },
+    { name: 'name', label: 'Your name:', autoComplete: 'name' },
+    { name: 'email', label: 'Your email:', autoComplete: 'email' },
+    { name: 'phone', label: 'Your phone number:', autoComplete: 'tel' },
     { name: 'recruiter_email', label: "Recruiter's Email:", autoComplete: 'email' },
   ];
 
