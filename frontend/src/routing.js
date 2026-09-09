@@ -32,8 +32,21 @@ export function readAssessmentFromUrl(location = window.location) {
   return null;
 }
 
-export function navigateToAssessment(assessmentId, { replace = false } = {}) {
-  const path = assessmentId ? pathForAssessment(assessmentId) : '/';
+export function readInviteTokenFromUrl(location = window.location) {
+  const params = new URLSearchParams(location.search);
+  return (params.get('invite') || '').trim() || null;
+}
+
+export function isAdminPath(location = window.location) {
+  const path = (location.pathname || '/').replace(/\/+$/, '') || '/';
+  return path === '/admin' || path.startsWith('/admin/');
+}
+
+export function navigateToAssessment(assessmentId, { replace = false, inviteToken = null } = {}) {
+  let path = assessmentId ? pathForAssessment(assessmentId) : '/';
+  if (assessmentId && inviteToken) {
+    path = `${path}?invite=${encodeURIComponent(inviteToken)}`;
+  }
   const method = replace ? 'replaceState' : 'pushState';
   window.history[method]({}, '', path);
 }

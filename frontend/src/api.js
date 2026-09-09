@@ -113,3 +113,116 @@ export async function submitQuiz(payload) {
   }
   return data;
 }
+
+function adminHeaders(adminKey) {
+  return {
+    'Content-Type': 'application/json',
+    'X-Admin-Key': adminKey,
+  };
+}
+
+export async function fetchInvite(token) {
+  const url = `${getApiBase()}/api/invite/${encodeURIComponent(token)}`;
+  const response = await fetchWithTimeout(url, { method: 'GET' }, 8000);
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new ApiError(data.error || `Invite not found (${response.status}).`, {
+      status: response.status,
+    });
+  }
+  return data;
+}
+
+export async function markInviteOpened(token, openedAt) {
+  const url = `${getApiBase()}/api/invite/${encodeURIComponent(token)}/open`;
+  const response = await fetchWithTimeout(
+    url,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ opened_at: openedAt }),
+    },
+    8000
+  );
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new ApiError(data.error || `Failed to record open (${response.status}).`, {
+      status: response.status,
+    });
+  }
+  return data;
+}
+
+export async function markInviteAcknowledged(token, acknowledgedAt) {
+  const url = `${getApiBase()}/api/invite/${encodeURIComponent(token)}/acknowledge`;
+  const response = await fetchWithTimeout(
+    url,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ acknowledged_at: acknowledgedAt }),
+    },
+    8000
+  );
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new ApiError(data.error || `Failed to record acknowledgment (${response.status}).`, {
+      status: response.status,
+    });
+  }
+  return data;
+}
+
+export async function adminListExams(adminKey) {
+  const url = `${getApiBase()}/api/admin/exams`;
+  const response = await fetchWithTimeout(
+    url,
+    { method: 'GET', headers: adminHeaders(adminKey) },
+    8000
+  );
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new ApiError(data.error || `Failed to load exams (${response.status}).`, {
+      status: response.status,
+      fields: data.fields,
+    });
+  }
+  return data;
+}
+
+export async function adminCreateExam(adminKey, payload) {
+  const url = `${getApiBase()}/api/admin/exams`;
+  const response = await fetchWithTimeout(
+    url,
+    {
+      method: 'POST',
+      headers: adminHeaders(adminKey),
+      body: JSON.stringify(payload),
+    },
+    8000
+  );
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new ApiError(data.error || `Failed to create exam (${response.status}).`, {
+      status: response.status,
+      fields: data.fields,
+    });
+  }
+  return data;
+}
+
+export async function adminExamDetail(adminKey, inviteId) {
+  const url = `${getApiBase()}/api/admin/exams/${encodeURIComponent(inviteId)}`;
+  const response = await fetchWithTimeout(
+    url,
+    { method: 'GET', headers: adminHeaders(adminKey) },
+    8000
+  );
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new ApiError(data.error || `Failed to load exam detail (${response.status}).`, {
+      status: response.status,
+    });
+  }
+  return data;
+}

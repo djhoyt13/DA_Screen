@@ -1,32 +1,49 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
+import AdminDashboard from './components/AdminDashboard.jsx';
 import AssessmentChooser from './components/AssessmentChooser.jsx';
 import {
+  isAdminPath,
   navigateToAssessment,
   pathForAssessment,
   readAssessmentFromUrl,
+  readInviteTokenFromUrl,
 } from './routing.js';
 import './styles.css';
 
 function Root() {
-  const [assessmentId, setAssessmentId] = useState(() => readAssessmentFromUrl());
+  const [isAdmin, setIsAdmin] = useState(() => isAdminPath());
+  const [assessmentId, setAssessmentId] = useState(() =>
+    isAdminPath() ? null : readAssessmentFromUrl()
+  );
 
   useEffect(() => {
-    // Canonicalize legacy ?assessment= query links to path URLs.
-    const current = readAssessmentFromUrl();
-    if (current) {
-      const canonical = pathForAssessment(current);
-      if (window.location.pathname.replace(/\/+$/, '') !== canonical) {
-        navigateToAssessment(current, { replace: true });
+    function syncFromLocation() {
+      if (isAdminPath()) {
+        setIsAdmin(true);
+        setAssessmentId(null);
+        return;
       }
+      setIsAdmin(false);
+      const current = readAssessmentFromUrl();
+      const invite = readInviteTokenFromUrl();
+      if (current) {
+        const canonical = pathForAssessment(current);
+        const desired = invite ? `${canonical}?invite=${encodeURIComponent(invite)}` : canonical;
+        const currentFull = `${window.location.pathname}${window.location.search}`;
+        if (currentFull.replace(/\/+$/, '') !== desired && window.location.pathname.replace(/\/+$/, '') !== canonical) {
+          navigateToAssessment(current, { replace: true, inviteToken: invite });
+        } else if (!invite && window.location.pathname.replace(/\/+$/, '') !== canonical) {
+          navigateToAssessment(current, { replace: true });
+        }
+      }
+      setAssessmentId(current);
     }
 
-    function onPopState() {
-      setAssessmentId(readAssessmentFromUrl());
-    }
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
+    syncFromLocation();
+    window.addEventListener('popstate', syncFromLocation);
+    return () => window.removeEventListener('popstate', syncFromLocation);
   }, []);
 
   function selectAssessment(id) {
@@ -37,6 +54,10 @@ function Root() {
   function clearAssessment() {
     navigateToAssessment(null);
     setAssessmentId(null);
+  }
+
+  if (isAdmin) {
+    return <AdminDashboard />;
   }
 
   if (!assessmentId) {

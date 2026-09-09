@@ -8,18 +8,21 @@ Start from the repository root:
 Database: SQLite at ``<repo_root>/quiz_results.db`` by default.
 Override with ``DATABASE_URL`` (e.g. ``sqlite:///./quiz_results.db``).
 """
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import Body, FastAPI, Query
+from typing import Optional
+from fastapi import Body, FastAPI, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend import assessments, emailer, persistence
+from backend import assessments, emailer, invites, persistence
+from backend.admin_auth import require_admin
 from backend.database import init_db
-from backend.timing import extract_timing
+from backend.timing import extract_timing, parse_iso_datetime
 from backend.validation import is_valid_email, is_valid_name, is_valid_phone
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -29,6 +32,11 @@ CORS_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:5173",
 ]
+
+
+def _public_app_url():
+    return (os.getenv("PUBLIC_APP_URL") or "http://127.0.0.1:5173").rstrip("/")
+
 
 @asynccontextmanager
 async def lifespan(_app):
@@ -137,6 +145,114 @@ def get_questions(assessment: str = Query(default="ds")):
     return assessments.build_questions_payload(normalized)
 
 
+@app.get("/api/invite/{token}")
+def get_invite(token: str):
+    data = invites.get_invite_public(token)
+    if data is None:
+        return JSONResponse(status_code=404, content={"error": "Invite not found"})
+    return data
+
+
+@app.post("/api/invite/{token}/open")
+def open_invite(token: str, payload: dict = Body(default=None)):
+    opened_at = None
+    if isinstance(payload, dict) and payload.get("opened_at"):
+        opened_at = parse_iso_datetime(payload.get("opened_at"))
+    data = invites.mark_opened(token, opened_at=opened_at)
+    if data is None:
+        return JSONResponse(status_code=404, content={"error": "Invite not found"})
+    return data
+
+
+@app.post("/api/invite/{token}/acknowledge")
+def acknowledge_invite(token: str, payload: dict = Body(default=None)):
+    acknowledged_at = None
+    if isinstance(payload, dict) and payload.get("acknowledged_at"):
+        acknowledged_at = parse_iso_datetime(payload.get("acknowledged_at"))
+    data = invites.mark_acknowledged(token, acknowledged_at=acknowledged_at)
+    if data is None:
+        return JSONResponse(status_code=404, content={"error": "Invite not found"})
+    return data
+
+
+@app.get("/api/admin/exams")
+def admin_list_exams(
+    x_admin_key: Optional[str] = Header(default=None, alias="X-Admin-Key"),
+    admin_key: Optional[str] = Query(default=None),
+):
+    auth_error = require_admin(x_admin_key=x_admin_key, admin_key=admin_key)
+    if auth_error is not None:
+        return auth_error
+    rows = invites.list_invites(public_app_url=_public_app_url())
+    return {"exams": rows}
+
+
+@app.post("/api/admin/exams")
+def admin_create_exam(
+    payload: dict = Body(default=None),
+    x_admin_key: Optional[str] = Header(default=None, alias="X-Admin-Key"),
+    admin_key: Optional[str] = Query(default=None),
+):
+    auth_error = require_admin(x_admin_key=x_admin_key, admin_key=admin_key)
+    if auth_error is not None:
+        return auth_error
+    if payload is None:
+        payload = {}
+
+    name = _as_str(payload.get("name")).strip()
+    email = _as_str(payload.get("email")).strip()
+    phone = _as_str(payload.get("phone")).strip()
+    recruiter_email = _as_str(payload.get("recruiter_email")).strip()
+    assessment_id = assessments.normalize_assessment_id(payload.get("assessment", "ds"))
+
+    fields = {}
+    if not name:
+        fields["name"] = "Name is required"
+    elif not is_valid_name(name):
+        fields["name"] = "Please enter a valid name (letters, spaces, hyphens, and apostrophes only)"
+    if not email:
+        fields["email"] = "Email is required"
+    elif not is_valid_email(email):
+        fields["email"] = "Please enter a valid email address"
+    if phone and not is_valid_phone(phone):
+        fields["phone"] = "Please enter a valid phone number (10-14 digits, can include country code)"
+    if recruiter_email and not is_valid_email(recruiter_email):
+        fields["recruiter_email"] = "Please enter a valid recruiter email address"
+    if assessment_id is None:
+        fields["assessment"] = "Assessment must be ds or de"
+    if fields:
+        return _validation_error(fields)
+
+    created = invites.create_invite(
+        name=name,
+        email=email,
+        assessment=assessment_id,
+        phone=phone or None,
+        recruiter_email=recruiter_email or None,
+        public_app_url=_public_app_url(),
+    )
+    return created
+
+
+@app.get("/api/admin/exams/{invite_id}")
+def admin_exam_detail(
+    invite_id: int,
+    x_admin_key: Optional[str] = Header(default=None, alias="X-Admin-Key"),
+    admin_key: Optional[str] = Query(default=None),
+):
+    auth_error = require_admin(x_admin_key=x_admin_key, admin_key=admin_key)
+    if auth_error is not None:
+        return auth_error
+    detail = invites.get_invite_detail(invite_id)
+    if detail is None:
+        return JSONResponse(status_code=404, content={"error": "Exam not found"})
+    path = "/data-scientist" if detail.get("assessment") == "ds" else "/data-engineer"
+    token = detail.get("token")
+    if token:
+        detail["invite_url"] = f"{_public_app_url()}{path}?invite={token}"
+    return detail
+
+
 @app.post("/api/submit")
 def submit_quiz(payload: dict = Body(default=None)):
     if payload is None:
@@ -159,6 +275,7 @@ def submit_quiz(payload: dict = Body(default=None)):
         email = _as_str(payload.get("email")).strip()
         phone = _as_str(payload.get("phone")).strip()
         recruiter_email = _as_str(payload.get("recruiter_email")).strip()
+        invite_token = _as_str(payload.get("invite_token")).strip()
         raw_answers = payload.get("answers") or {}
         answers = {}
         for key in assessments.question_keys_for(assessment_id):
@@ -187,6 +304,13 @@ def submit_quiz(payload: dict = Body(default=None)):
             submitted_at=submitted_at,
             answer_timestamps=timing["answer_timestamps"],
         )
+
+        if invite_token:
+            invites.mark_completed(
+                invite_token,
+                submission_id=submission_id,
+                completed_at=submitted_at,
+            )
 
         email_sent, email_warning = emailer.send_results_email(
             name=name,

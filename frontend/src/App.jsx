@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ApiError, fetchQuestions, getApiBase, submitQuiz } from './api.js';
+import {
+  ApiError,
+  fetchInvite,
+  fetchQuestions,
+  getApiBase,
+  markInviteAcknowledged,
+  markInviteOpened,
+  submitQuiz,
+} from './api.js';
 import { collectQuestionKeys, getTotalQuestions } from './progress.js';
+import { readInviteTokenFromUrl } from './routing.js';
 import { nowIso } from './timing.js';
 import {
   countAnswered,
@@ -51,6 +60,7 @@ function fieldMessagesFromApi(error) {
 }
 
 export default function App({ assessmentId = 'ds', onChangeAssessment }) {
+  const inviteToken = readInviteTokenFromUrl();
   const [quiz, setQuiz] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -65,6 +75,7 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
   const [submitted, setSubmitted] = useState(false);
   const [results, setResults] = useState(null);
   const [statementAcknowledged, setStatementAcknowledged] = useState(false);
+  const [inviteCompleted, setInviteCompleted] = useState(false);
 
   const roleCopy = ROLE_COPY[assessmentId] || ROLE_COPY.ds;
 
@@ -83,14 +94,47 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
       setResults(null);
       setStatementAcknowledged(false);
       setSubmitErrors([]);
+      setInviteCompleted(false);
+      setCandidate(EMPTY_CANDIDATE);
       try {
+        if (inviteToken) {
+          const invite = await fetchInvite(inviteToken);
+          if (cancelled) return;
+          if (invite.assessment && invite.assessment !== assessmentId) {
+            setLoadError(
+              `This invite is for the ${
+                invite.assessment === 'de' ? 'Data Engineer' : 'Data Scientist'
+              } assessment. Open the correct link.`
+            );
+            setLoading(false);
+            return;
+          }
+          if (invite.completed) {
+            setInviteCompleted(true);
+          }
+          setCandidate({
+            name: invite.name || '',
+            email: invite.email || '',
+            phone: invite.phone || '',
+            recruiter_email: invite.recruiter_email || '',
+          });
+        }
+
         const data = await fetchQuestions(assessmentId);
         if (!cancelled) {
+          const opened = nowIso();
           setQuiz(data);
-          setOpenedAt(nowIso());
+          setOpenedAt(opened);
           document.title = data?.title
             ? String(data.title).replace('Technical Review', 'Initial Assessment')
             : roleCopy.fallbackTitle.replace('Technical Review', 'Initial Assessment');
+          if (inviteToken) {
+            try {
+              await markInviteOpened(inviteToken, opened);
+            } catch {
+              // Non-blocking: candidate can still take the exam.
+            }
+          }
         }
       } catch (err) {
         if (!cancelled) {
@@ -109,12 +153,12 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
     return () => {
       cancelled = true;
     };
-  }, [assessmentId, roleCopy.fallbackTitle]);
+  }, [assessmentId, inviteToken, roleCopy.fallbackTitle]);
 
   const questionKeys = useMemo(() => collectQuestionKeys(quiz), [quiz]);
   const totalQuestions = getTotalQuestions(quiz, questionKeys);
   const answeredCount = countAnswered(answers, questionKeys);
-  const locked = submitted || submitting;
+  const locked = submitted || submitting || inviteCompleted;
   const assessmentOpen = statementAcknowledged && !locked;
 
   function handleCandidateChange(field, value) {
@@ -129,7 +173,7 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
   }
 
   async function handleSubmit() {
-    if (submitted || submitting) {
+    if (submitted || submitting || inviteCompleted) {
       return;
     }
     if (!statementAcknowledged) {
@@ -159,6 +203,9 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
           answers: answerTimestamps,
         },
       };
+      if (inviteToken) {
+        payload.invite_token = inviteToken;
+      }
       const data = await submitQuiz(payload);
       setResults(data);
       setSubmitted(true);
@@ -197,7 +244,7 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
           </div>
         </div>
         <div className="brand-actions">
-          {typeof onChangeAssessment === 'function' ? (
+          {typeof onChangeAssessment === 'function' && !inviteToken ? (
             <button type="button" className="brand-link" onClick={onChangeAssessment}>
               Change assessment
             </button>
@@ -208,6 +255,12 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
 
       <h1>{title}</h1>
       <ProgressBar answered={answeredCount} total={totalQuestions} />
+
+      {inviteCompleted ? (
+        <div className="success-msg">
+          This invite has already been completed. Contact your recruiter if you need a new link.
+        </div>
+      ) : null}
 
       <div className="welcome-msg">
         Welcome to the {roleCopy.role} technical review. The results of this review are
@@ -228,7 +281,8 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
           onChange={(event) => {
             const checked = event.target.checked;
             setStatementAcknowledged(checked);
-            setAcknowledgedAt(checked ? nowIso() : null);
+            const stamped = checked ? nowIso() : null;
+            setAcknowledgedAt(stamped);
             if (checked) {
               setSubmitErrors((prev) =>
                 prev.filter(
@@ -237,6 +291,9 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
                     'Please confirm that you have read the welcome statement before continuing.',
                 ),
               );
+              if (inviteToken) {
+                markInviteAcknowledged(inviteToken, stamped).catch(() => {});
+              }
             }
           }}
         />
@@ -244,11 +301,15 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
         <span className="ack-label">I have read the above statement</span>
       </label>
 
-      {!statementAcknowledged && !submitted ? (
+      {!statementAcknowledged && !submitted && !inviteCompleted ? (
         <p className="ack-hint">Check the box above to begin the assessment.</p>
       ) : null}
 
-      <div className={!statementAcknowledged && !submitted ? 'assessment-gated' : undefined}>
+      <div
+        className={
+          !statementAcknowledged && !submitted && !inviteCompleted ? 'assessment-gated' : undefined
+        }
+      >
         <CandidateForm
           values={candidate}
           errors={fieldErrors}
@@ -273,7 +334,7 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
 
         {quiz ? <hr className="submit-divider" /> : null}
 
-        {quiz && !submitted ? (
+        {quiz && !submitted && !inviteCompleted ? (
           <button
             type="button"
             className="btn-primary"

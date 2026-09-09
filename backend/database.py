@@ -73,6 +73,7 @@ def reset_engine(url=None):
 def init_db():
     """Create tables if they do not exist. Safe to call on every startup."""
     import backend.models  # noqa: F401 — register models on Base.metadata
+    import backend.models_invites  # noqa: F401
 
     engine = get_engine()
     Base.metadata.create_all(bind=engine)

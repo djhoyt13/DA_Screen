@@ -60,6 +60,13 @@ export default function AssessmentChooser({ onSelect, loadError }) {
       </div>
 
       {loadError ? <div className="error-msg">{loadError}</div> : null}
+
+      <p className="chooser-lead" style={{ marginTop: '2rem' }}>
+        Administrators:{' '}
+        <a className="brand-link" href="/admin">
+          Open exam dashboard
+        </a>
+      </p>
     </div>
   );
 }
