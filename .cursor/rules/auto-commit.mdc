@@ -1,0 +1,43 @@
+---
+description: Auto-commit after code changes; suggest push after major features
+alwaysApply: true
+---
+
+# Auto-commit and push suggestions
+
+This project overrides the default “commit only when asked” behavior.
+
+## After any codebase change
+
+When you finish a turn that created, modified, or deleted project files (source, config, tests, docs, assets — not scratch-only notes):
+
+1. Run `git status`, `git diff`, and `git log -5 --oneline` in parallel.
+2. Stage the relevant files (exclude secrets like `.env`, credentials, and local scratch scripts unless the user asked to include them).
+3. Create a commit using a HEREDOC message focused on **why** (1–2 sentences). Follow existing commit style in this repo.
+4. Run `git status` after the commit to confirm success.
+5. Briefly tell the user what was committed (short hash + subject).
+
+If there is nothing to commit, skip silently.
+
+## After major changes
+
+Treat these as **major** and **suggest** (do not force) a push to remote:
+
+- New features or assessments
+- API/contract changes
+- Multi-file refactors
+- Branding/UX overhauls
+- Anything spanning backend + frontend
+
+Suggestion format: one short sentence, e.g.  
+“This is a major change — want me to push `main` to origin?”
+
+Only push when the user explicitly says yes (or asks you to push).
+
+## Safety (never violate)
+
+- Do not update git config
+- Do not use `--no-verify`, force push, or amend unless the user’s commit rules allow it
+- Do not commit `.env`, keys, or secrets
+- Do not push unless the user confirms
+- If a hook rejects the commit, fix the issue and create a **new** commit (do not amend unless amend rules are met)
