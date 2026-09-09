@@ -975,8 +975,10 @@ input[type="text"]:disabled,
 }
 
 .status-sent {
-  background: rgba(139, 149, 168, 0.2);
-  color: var(--mt-muted);
+  background: rgba(223, 35, 39, 0.22);
+  color: #ff6b6e;
+  border: 1px solid rgba(223, 35, 39, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(223, 35, 39, 0.15);
 }
 
 .status-opened {

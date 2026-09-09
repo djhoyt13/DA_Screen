@@ -79,7 +79,7 @@ export default function AdminDashboard() {
   );
 
   const filtered = useMemo(() => {
-    return exams.filter((exam) => {
+    const rows = exams.filter((exam) => {
       const candidateText = `${exam.name || ''} ${exam.email || ''} ${exam.phone || ''}`;
       const assessmentText = assessmentLabel(exam.assessment);
       const statusText = exam.status_label || exam.status || '';
@@ -97,6 +97,15 @@ export default function AdminDashboard() {
         matchesFilter(completedText, columnFilters.completed) &&
         matchesFilter(scoreText, columnFilters.score)
       );
+    });
+
+    return [...rows].sort((a, b) => {
+      const aSent = a.sent_at || a.completed_at || '';
+      const bSent = b.sent_at || b.completed_at || '';
+      if (aSent === bSent) {
+        return (b.id || 0) - (a.id || 0);
+      }
+      return aSent < bSent ? 1 : -1;
     });
   }, [exams, columnFilters]);
 
