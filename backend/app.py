@@ -175,6 +175,91 @@ def acknowledge_invite(token: str, payload: dict = Body(default=None)):
     return data
 
 
+@app.patch("/api/invite/{token}/candidate")
+def patch_invite_candidate(token: str, payload: dict = Body(default=None)):
+    """Persist name/email/phone edits on an incomplete invite before exam submit."""
+    if not isinstance(payload, dict):
+        payload = {}
+
+    # recruiter_email is ignored — never accepted for update on this endpoint.
+    updates = {}
+    fields = {}
+    if "name" in payload:
+        name = _as_str(payload.get("name")).strip()
+        if not name:
+            fields["name"] = "Name is required"
+        elif not is_valid_name(name):
+            fields["name"] = (
+                "Please enter a valid name (letters, spaces, hyphens, and apostrophes only)"
+            )
+        else:
+            updates["name"] = name
+    if "email" in payload:
+        email = _as_str(payload.get("email")).strip()
+        if not email:
+            fields["email"] = "Email is required"
+        elif not is_valid_email(email):
+            fields["email"] = "Please enter a valid email address"
+        else:
+            updates["email"] = email
+    if "phone" in payload:
+        phone = _as_str(payload.get("phone")).strip()
+        if not phone:
+            fields["phone"] = "Phone number is required"
+        elif not is_valid_phone(phone):
+            fields["phone"] = (
+                "Please enter a valid phone number (10-14 digits, can include country code)"
+            )
+        else:
+            updates["phone"] = phone
+
+    if not updates and not fields:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "At least one of name, email, or phone is required"},
+        )
+    if fields:
+        return _validation_error(fields)
+
+    existing = invites.get_invite_public(token)
+    if existing is None:
+        return JSONResponse(status_code=404, content={"error": "Invite not found"})
+    if existing.get("completed"):
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Invite already completed"},
+        )
+
+    phone_normalized = None
+    if "phone" in updates:
+        phone_normalized = normalize_phone(updates["phone"])
+        if invites.has_incomplete_invite_for_phone(
+            phone_normalized, exclude_token=token
+        ):
+            return _validation_error(
+                {
+                    "phone": "An incomplete invite already exists for this phone number",
+                }
+            )
+
+    status, data = invites.update_candidate_contact(
+        token,
+        name=updates.get("name"),
+        email=updates.get("email"),
+        phone=updates.get("phone"),
+        phone_normalized=phone_normalized if "phone" in updates else None,
+    )
+    if status != "ok":
+        # Race: invite removed or completed between lookup and update
+        error = (
+            "Invite already completed"
+            if status == "completed"
+            else "Invite not found"
+        )
+        return JSONResponse(status_code=404, content={"error": error})
+    return data
+
+
 @app.get("/api/admin/exams")
 def admin_list_exams(
     x_admin_key: Optional[str] = Header(default=None, alias="X-Admin-Key"),

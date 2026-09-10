@@ -457,6 +457,10 @@ p {
   margin-top: 1rem;
 }
 
+.candidate-info.is-invite-mode {
+  max-width: min(36rem, 100%);
+}
+
 .candidate-info.is-invite-mode .field.is-field-locked input[type="text"] {
   opacity: 0.85;
   cursor: default;
@@ -469,6 +473,46 @@ p {
 
 .candidate-info .field:last-child {
   margin-bottom: 0.25rem;
+}
+
+.candidate-info .field-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.55rem;
+}
+
+.candidate-info .field-row input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.btn-field-action {
+  flex: 0 0 auto;
+  align-self: stretch;
+  min-width: 4.75rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--mt-border);
+  border-radius: var(--mt-radius);
+  background: rgba(223, 35, 39, 0.12);
+  color: var(--mt-text);
+  font-family: var(--mt-font-display);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-field-action:hover:not(:disabled) {
+  background: rgba(223, 35, 39, 0.22);
+  border-color: var(--mt-red);
+}
+
+.btn-field-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .field label {
@@ -1035,6 +1079,14 @@ input[type="text"]:disabled,
 
   .candidate-info {
     max-width: 100%;
+  }
+
+  .candidate-info .field-row {
+    flex-wrap: wrap;
+  }
+
+  .btn-field-action {
+    min-height: 2.5rem;
   }
 
   .metrics {

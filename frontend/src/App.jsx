@@ -7,6 +7,7 @@ import {
   markInviteAcknowledged,
   markInviteOpened,
   submitQuiz,
+  updateInviteCandidate,
 } from './api.js';
 import { collectQuestionKeys, getTotalQuestions } from './progress.js';
 import { readInviteTokenFromUrl } from './routing.js';
@@ -169,6 +170,21 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
     setFieldErrors((prev) => ({ ...prev, [field]: inlineFieldError(field, value) }));
   }
 
+  async function handleSaveInviteField(field, value) {
+    if (!inviteToken) {
+      return;
+    }
+    const data = await updateInviteCandidate(inviteToken, { [field]: value });
+    setCandidate((prev) => ({
+      ...prev,
+      name: data.name ?? (field === 'name' ? value : prev.name),
+      email: data.email ?? (field === 'email' ? value : prev.email),
+      phone: data.phone ?? (field === 'phone' ? value : prev.phone),
+      recruiter_email: data.recruiter_email ?? prev.recruiter_email,
+    }));
+    setFieldErrors((prev) => ({ ...prev, [field]: '' }));
+  }
+
   function handleAnswer(key, value) {
     const stamped = nowIso();
     setAnswers((prev) => ({ ...prev, [key]: value }));
@@ -308,18 +324,33 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
         <p className="ack-hint">Check the box above to begin the assessment.</p>
       ) : null}
 
+      {inviteToken ? (
+        <CandidateForm
+          values={candidate}
+          errors={fieldErrors}
+          onChange={handleCandidateChange}
+          disabled={false}
+          examLocked={locked}
+          inviteMode
+          onSaveInviteField={handleSaveInviteField}
+        />
+      ) : null}
+
       <div
         className={
           !statementAcknowledged && !submitted && !inviteCompleted ? 'assessment-gated' : undefined
         }
       >
-        <CandidateForm
-          values={candidate}
-          errors={fieldErrors}
-          onChange={handleCandidateChange}
-          disabled={!assessmentOpen}
-          inviteMode={Boolean(inviteToken)}
-        />
+        {!inviteToken ? (
+          <CandidateForm
+            values={candidate}
+            errors={fieldErrors}
+            onChange={handleCandidateChange}
+            disabled={!assessmentOpen}
+            examLocked={locked}
+            inviteMode={false}
+          />
+        ) : null}
 
         {loading ? <p className="status-copy">Loading questions…</p> : null}
         {loadError ? <div className="error-msg">{loadError}</div> : null}

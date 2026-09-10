@@ -133,6 +133,39 @@ export async function fetchInvite(token) {
   return data;
 }
 
+export async function updateInviteCandidate(token, partial) {
+  const url = `${getApiBase()}/api/invite/${encodeURIComponent(token)}/candidate`;
+  let response;
+  try {
+    response = await fetchWithTimeout(
+      url,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(partial),
+      },
+      8000
+    );
+  } catch (err) {
+    if (err instanceof ApiError) {
+      throw err;
+    }
+    throw new ApiError(
+      `Unable to update details. Please check that the API is running at ${getApiBase() || window.location.origin}.`,
+      { status: 0 }
+    );
+  }
+
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new ApiError(data.error || `Failed to update candidate (${response.status}).`, {
+      status: response.status,
+      fields: data.fields,
+    });
+  }
+  return data;
+}
+
 export async function markInviteOpened(token, openedAt) {
   const url = `${getApiBase()}/api/invite/${encodeURIComponent(token)}/open`;
   const response = await fetchWithTimeout(

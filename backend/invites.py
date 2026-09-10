@@ -248,16 +248,7 @@ def get_invite_public(token):
         )
         if invite is None:
             return None
-        return {
-            "token": invite.token,
-            "name": invite.name,
-            "email": invite.email,
-            "phone": invite.phone or "",
-            "recruiter_email": invite.recruiter_email or "",
-            "assessment": invite.assessment,
-            "status": compute_status(invite),
-            "completed": compute_status(invite) == STATUS_COMPLETED,
-        }
+        return _public_invite_payload(invite)
     finally:
         session.close()
 
@@ -302,6 +293,67 @@ def mark_acknowledged(token, acknowledged_at=None):
         session.commit()
         session.refresh(invite)
         return invite_to_dict(invite)
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+def _public_invite_payload(invite):
+    return {
+        "token": invite.token,
+        "name": invite.name,
+        "email": invite.email,
+        "phone": invite.phone or "",
+        "recruiter_email": invite.recruiter_email or "",
+        "assessment": invite.assessment,
+        "status": compute_status(invite),
+        "completed": compute_status(invite) == STATUS_COMPLETED,
+    }
+
+
+def update_candidate_contact(
+    token,
+    *,
+    name=None,
+    email=None,
+    phone=None,
+    phone_normalized=None,
+):
+    """Partial upsert of candidate contact on an incomplete invite.
+
+    Does not overwrite ``recruiter_email``.
+
+    Returns:
+        ``("ok", public_payload)`` on success,
+        ``("not_found", None)`` if token is unknown,
+        ``("completed", None)`` if the invite is already completed.
+    """
+    if not token:
+        return ("not_found", None)
+    session = get_session()
+    try:
+        invite = (
+            session.query(ExamInvite)
+            .filter(ExamInvite.token == str(token).strip())
+            .one_or_none()
+        )
+        if invite is None:
+            return ("not_found", None)
+        if compute_status(invite) == STATUS_COMPLETED:
+            return ("completed", None)
+        if name is not None:
+            invite.name = name
+        if email is not None:
+            invite.email = email
+        if phone is not None:
+            invite.phone = phone or None
+        if phone_normalized is not None:
+            invite.phone_normalized = phone_normalized or None
+        session.commit()
+        session.refresh(invite)
+        return ("ok", _public_invite_payload(invite))
     except Exception:
         session.rollback()
         raise
