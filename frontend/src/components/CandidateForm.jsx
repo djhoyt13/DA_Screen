@@ -151,12 +151,6 @@ export default function CandidateForm({
   return (
     <section className="candidate-section">
       <h2>Candidate Information</h2>
-      {inviteMode ? (
-        <p className="invite-locked-note">
-          Details were provided by your recruiter. Press Update next to a field to correct
-          your name, email, or phone, then Submit to save.
-        </p>
-      ) : null}
       <div className={`candidate-info${inviteMode ? ' is-invite-mode' : ''}`}>
         {fields.map((field) => {
           const error = displayError(field.name);
