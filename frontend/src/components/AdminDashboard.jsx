@@ -15,15 +15,36 @@ const STATUS_CLASS = {
   completed: 'status-completed',
 };
 
+const STATUS_FILTER_OPTIONS = [
+  { value: '', label: 'All statuses' },
+  { value: 'sent', label: 'Sent' },
+  { value: 'opened', label: 'Opened' },
+  { value: 'opened_but_not_completed', label: 'In progress' },
+  { value: 'completed', label: 'Completed' },
+];
+
+const ASSESSMENT_FILTER_OPTIONS = [
+  { value: '', label: 'All assessments' },
+  { value: 'ds', label: 'Data Scientist' },
+  { value: 'de', label: 'Data Engineer' },
+];
+
 const EMPTY_COLUMN_FILTERS = {
-  candidate: '',
   assessment: '',
   status: '',
-  sent: '',
-  opened: '',
-  completed: '',
-  score: '',
 };
+
+const DEFAULT_SORT = { key: 'sent', dir: 'desc' };
+
+const TABLE_COLUMNS = [
+  { key: 'candidate', label: 'Candidate', mode: 'sort' },
+  { key: 'assessment', label: 'Assessment', mode: 'filter', filter: 'assessment' },
+  { key: 'status', label: 'Status', mode: 'filter', filter: 'status' },
+  { key: 'sent', label: 'Sent', mode: 'sort' },
+  { key: 'opened', label: 'Opened', mode: 'sort' },
+  { key: 'completed', label: 'Completed', mode: 'sort' },
+  { key: 'score', label: 'Score', mode: 'sort' },
+];
 
 function formatWhen(value) {
   if (!value) return '—';
@@ -45,11 +66,43 @@ function examRowKey(exam) {
   return exam.row_id || (exam.id != null ? String(exam.id) : '');
 }
 
-function matchesFilter(haystack, needle) {
-  if (!needle.trim()) return true;
-  return String(haystack ?? '')
-    .toLowerCase()
-    .includes(needle.trim().toLowerCase());
+function sortValue(exam, key) {
+  switch (key) {
+    case 'candidate':
+      return `${exam.name || ''} ${exam.email || ''}`.trim().toLowerCase();
+    case 'assessment':
+      return assessmentLabel(exam.assessment).toLowerCase();
+    case 'status':
+      return (exam.status_label || exam.status || '').toLowerCase();
+    case 'sent':
+      return exam.sent_at || '';
+    case 'opened':
+      return exam.opened_at || '';
+    case 'completed':
+      return exam.completed_at || '';
+    case 'score':
+      return exam.score_percentage == null || exam.score_percentage === ''
+        ? null
+        : Number(exam.score_percentage);
+    default:
+      return '';
+  }
+}
+
+function compareSortValues(aVal, bVal, dir) {
+  const aEmpty = aVal == null || aVal === '';
+  const bEmpty = bVal == null || bVal === '';
+  if (aEmpty && bEmpty) return 0;
+  if (aEmpty) return 1;
+  if (bEmpty) return -1;
+  if (typeof aVal === 'number' && typeof bVal === 'number') {
+    return dir === 'asc' ? aVal - bVal : bVal - aVal;
+  }
+  const aStr = String(aVal);
+  const bStr = String(bVal);
+  if (aStr < bStr) return dir === 'asc' ? -1 : 1;
+  if (aStr > bStr) return dir === 'asc' ? 1 : -1;
+  return 0;
 }
 
 export default function AdminDashboard() {
@@ -72,47 +125,33 @@ export default function AdminDashboard() {
   const [emailOutcome, setEmailOutcome] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const [columnFilters, setColumnFilters] = useState(EMPTY_COLUMN_FILTERS);
+  const [sort, setSort] = useState(DEFAULT_SORT);
 
   const filtersActive = useMemo(
-    () => Object.values(columnFilters).some((value) => value.trim() !== ''),
-    [columnFilters]
+    () =>
+      Object.values(columnFilters).some((value) => value !== '') ||
+      sort.key !== DEFAULT_SORT.key ||
+      sort.dir !== DEFAULT_SORT.dir,
+    [columnFilters, sort]
   );
 
   const filtered = useMemo(() => {
     const rows = exams.filter((exam) => {
-      const candidateText = `${exam.name || ''} ${exam.email || ''} ${exam.phone || ''}`;
-      const assessmentText = assessmentLabel(exam.assessment);
-      const statusText = exam.status_label || exam.status || '';
-      const sentText = formatWhen(exam.sent_at);
-      const openedText = formatWhen(exam.opened_at);
-      const completedText = formatWhen(exam.completed_at);
-      const scoreText = formatScore(exam.score_percentage);
-
-      return (
-        matchesFilter(candidateText, columnFilters.candidate) &&
-        matchesFilter(assessmentText, columnFilters.assessment) &&
-        matchesFilter(statusText, columnFilters.status) &&
-        matchesFilter(sentText, columnFilters.sent) &&
-        matchesFilter(openedText, columnFilters.opened) &&
-        matchesFilter(completedText, columnFilters.completed) &&
-        matchesFilter(scoreText, columnFilters.score)
-      );
+      if (columnFilters.assessment && exam.assessment !== columnFilters.assessment) {
+        return false;
+      }
+      if (columnFilters.status && exam.status !== columnFilters.status) {
+        return false;
+      }
+      return true;
     });
 
     return [...rows].sort((a, b) => {
-      const aSent = a.sent_at || '';
-      const bSent = b.sent_at || '';
-      const aHasSent = Boolean(aSent);
-      const bHasSent = Boolean(bSent);
-      if (aHasSent !== bHasSent) {
-        return aHasSent ? -1 : 1;
-      }
-      if (aSent === bSent) {
-        return (b.id || 0) - (a.id || 0);
-      }
-      return aSent < bSent ? 1 : -1;
+      const primary = compareSortValues(sortValue(a, sort.key), sortValue(b, sort.key), sort.dir);
+      if (primary !== 0) return primary;
+      return (b.id || 0) - (a.id || 0);
     });
-  }, [exams, columnFilters]);
+  }, [exams, columnFilters, sort]);
 
   async function loadExams(key = adminKey) {
     if (!key) return;
@@ -209,6 +248,20 @@ export default function AdminDashboard() {
     setColumnFilters((prev) => ({ ...prev, [key]: value }));
   }
 
+  function toggleSort(key) {
+    setSort((prev) => {
+      if (prev.key === key) {
+        return { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, dir: key === 'candidate' ? 'asc' : 'desc' };
+    });
+  }
+
+  function clearTableControls() {
+    setColumnFilters(EMPTY_COLUMN_FILTERS);
+    setSort(DEFAULT_SORT);
+  }
+
   if (!adminKey) {
     return (
       <div className="page admin-page">
@@ -265,6 +318,7 @@ export default function AdminDashboard() {
               setExams([]);
               setSelectedKey(null);
               setColumnFilters(EMPTY_COLUMN_FILTERS);
+              setSort(DEFAULT_SORT);
             }}
           >
             Sign out
@@ -390,11 +444,7 @@ export default function AdminDashboard() {
           <h2>Exam status</h2>
           <div className="admin-filters">
             {filtersActive ? (
-              <button
-                type="button"
-                className="brand-link"
-                onClick={() => setColumnFilters(EMPTY_COLUMN_FILTERS)}
-              >
+              <button type="button" className="brand-link" onClick={clearTableControls}>
                 Clear filters
               </button>
             ) : null}
@@ -411,85 +461,70 @@ export default function AdminDashboard() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Candidate</th>
-                <th>Assessment</th>
-                <th>Status</th>
-                <th>Sent</th>
-                <th>Opened</th>
-                <th>Completed</th>
-                <th>Score</th>
+                {TABLE_COLUMNS.map((column) => {
+                  if (column.mode === 'sort') {
+                    const isActive = sort.key === column.key;
+                    return (
+                      <th key={column.key}>
+                        <button
+                          type="button"
+                          className={`admin-sort-btn${isActive ? ' is-active' : ''}`}
+                          onClick={() => toggleSort(column.key)}
+                          aria-label={`Sort by ${column.label}`}
+                        >
+                          <span>{column.label}</span>
+                          <span className="admin-sort-indicator" aria-hidden="true">
+                            {isActive ? (sort.dir === 'asc' ? '▲' : '▼') : '↕'}
+                          </span>
+                        </button>
+                      </th>
+                    );
+                  }
+                  return <th key={column.key}>{column.label}</th>;
+                })}
               </tr>
               <tr className="admin-filter-row">
-                <th>
-                  <input
-                    type="search"
-                    className="admin-col-filter"
-                    placeholder="Filter…"
-                    aria-label="Filter candidate"
-                    value={columnFilters.candidate}
-                    onChange={(event) => updateColumnFilter('candidate', event.target.value)}
-                  />
-                </th>
-                <th>
-                  <input
-                    type="search"
-                    className="admin-col-filter"
-                    placeholder="Filter…"
-                    aria-label="Filter assessment"
-                    value={columnFilters.assessment}
-                    onChange={(event) => updateColumnFilter('assessment', event.target.value)}
-                  />
-                </th>
-                <th>
-                  <input
-                    type="search"
-                    className="admin-col-filter"
-                    placeholder="Filter…"
-                    aria-label="Filter status"
-                    value={columnFilters.status}
-                    onChange={(event) => updateColumnFilter('status', event.target.value)}
-                  />
-                </th>
-                <th>
-                  <input
-                    type="search"
-                    className="admin-col-filter"
-                    placeholder="Filter…"
-                    aria-label="Filter sent"
-                    value={columnFilters.sent}
-                    onChange={(event) => updateColumnFilter('sent', event.target.value)}
-                  />
-                </th>
-                <th>
-                  <input
-                    type="search"
-                    className="admin-col-filter"
-                    placeholder="Filter…"
-                    aria-label="Filter opened"
-                    value={columnFilters.opened}
-                    onChange={(event) => updateColumnFilter('opened', event.target.value)}
-                  />
-                </th>
-                <th>
-                  <input
-                    type="search"
-                    className="admin-col-filter"
-                    placeholder="Filter…"
-                    aria-label="Filter completed"
-                    value={columnFilters.completed}
-                    onChange={(event) => updateColumnFilter('completed', event.target.value)}
-                  />
-                </th>
-                <th>
-                  <input
-                    type="search"
-                    className="admin-col-filter"
-                    placeholder="Filter…"
-                    aria-label="Filter score"
-                    value={columnFilters.score}
-                    onChange={(event) => updateColumnFilter('score', event.target.value)}
-                  />
-                </th>
+                {TABLE_COLUMNS.map((column) => {
+                  if (column.filter === 'assessment') {
+                    return (
+                      <th key={`${column.key}-filter`}>
+                        <select
+                          className="admin-col-filter"
+                          aria-label="Filter assessment"
+                          value={columnFilters.assessment}
+                          onChange={(event) =>
+                            updateColumnFilter('assessment', event.target.value)
+                          }
+                        >
+                          {ASSESSMENT_FILTER_OPTIONS.map((option) => (
+                            <option key={option.value || 'all'} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </th>
+                    );
+                  }
+                  if (column.filter === 'status') {
+                    return (
+                      <th key={`${column.key}-filter`}>
+                        <select
+                          className="admin-col-filter"
+                          aria-label="Filter status"
+                          value={columnFilters.status}
+                          onChange={(event) => updateColumnFilter('status', event.target.value)}
+                        >
+                          {STATUS_FILTER_OPTIONS.map((option) => (
+                            <option key={option.value || 'all'} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </th>
+                    );
+                  }
+                  return <th key={`${column.key}-filter`} className="admin-filter-spacer" />;
+                })}
               </tr>
             </thead>
             <tbody>
