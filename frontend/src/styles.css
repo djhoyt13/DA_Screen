@@ -493,8 +493,8 @@ p {
   padding: 0.45rem 0.75rem;
   border: 1px solid var(--mt-border);
   border-radius: var(--mt-radius);
-  background: rgba(223, 35, 39, 0.12);
-  color: var(--mt-text);
+  background: rgba(117, 216, 240, 0.14);
+  color: var(--mt-cyan);
   font-family: var(--mt-font-display);
   font-size: 0.78rem;
   font-weight: 600;
@@ -502,12 +502,29 @@ p {
   text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
 
-.btn-field-action:hover:not(:disabled) {
-  background: rgba(223, 35, 39, 0.22);
-  border-color: var(--mt-red);
+.btn-field-action--update {
+  background: rgba(117, 216, 240, 0.14);
+  border-color: rgba(117, 216, 240, 0.55);
+  color: var(--mt-cyan);
+}
+
+.btn-field-action--update:hover:not(:disabled) {
+  background: rgba(117, 216, 240, 0.24);
+  border-color: var(--mt-cyan);
+}
+
+.btn-field-action--submit {
+  background: rgba(61, 214, 140, 0.16);
+  border-color: rgba(61, 214, 140, 0.55);
+  color: var(--mt-success);
+}
+
+.btn-field-action--submit:hover:not(:disabled) {
+  background: rgba(61, 214, 140, 0.28);
+  border-color: var(--mt-success);
 }
 
 .btn-field-action:disabled {

@@ -208,7 +208,9 @@ export default function CandidateForm({
                 {showAction ? (
                   <button
                     type="button"
-                    className="btn-field-action"
+                    className={`btn-field-action${
+                      isEditing ? ' btn-field-action--submit' : ' btn-field-action--update'
+                    }`}
                     disabled={actionDisabled}
                     onClick={() =>
                       isEditing ? submitEdit(field.name) : startEdit(field.name)
