@@ -931,7 +931,14 @@ input[type="text"]:disabled,
   align-items: center;
 }
 
-.admin-table-wrap,
+.admin-table-wrap {
+  overflow: auto;
+  max-height: 34rem; /* header + filter row + ~5 exam records */
+  border: 1px solid var(--mt-border);
+  border-radius: var(--mt-radius);
+  background: var(--mt-panel);
+}
+
 .admin-link-box {
   overflow-x: auto;
   border: 1px solid var(--mt-border);
@@ -958,6 +965,20 @@ input[type="text"]:disabled,
   letter-spacing: 0.05em;
   color: var(--mt-cyan);
   font-size: 0.9rem;
+  background: var(--mt-panel);
+}
+
+.admin-table thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.admin-table thead tr.admin-filter-row th {
+  position: sticky;
+  top: 2.85rem;
+  z-index: 2;
+  background: var(--mt-panel);
 }
 
 .admin-filter-row th {
