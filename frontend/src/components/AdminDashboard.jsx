@@ -358,11 +358,6 @@ export default function AdminDashboard() {
           <span className="brand-pill">Admin</span>
         </header>
         <h1>Assessment Admin</h1>
-        <p className="chooser-lead">
-          Sign in with your <code>@mantech.com</code> or <code>@elderresearch.com</code> email.
-          Your password is your last name from that email (the part after the final{' '}
-          <code>.</code> before <code>@</code>), case-insensitive.
-        </p>
         <form className="admin-login" onSubmit={handleLogin}>
           <label htmlFor="admin-email">Work email</label>
           <input
