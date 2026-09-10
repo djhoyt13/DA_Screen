@@ -4,9 +4,40 @@ import {
   adminCreateExam,
   adminExamDetail,
   adminListExams,
+  adminLogin,
 } from '../api.js';
 
-const ADMIN_KEY_STORAGE = 'da_screen_admin_key';
+const ADMIN_CREDS_STORAGE = 'da_screen_admin_creds';
+const ALLOWED_EMAIL_DOMAINS = ['@mantech.com', '@elderresearch.com'];
+
+function readStoredCredentials() {
+  try {
+    const raw = sessionStorage.getItem(ADMIN_CREDS_STORAGE);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.email && parsed?.password) {
+      return { email: String(parsed.email), password: String(parsed.password) };
+    }
+  } catch {
+    // ignore corrupt storage
+  }
+  return null;
+}
+
+function storeCredentials(credentials) {
+  sessionStorage.setItem(ADMIN_CREDS_STORAGE, JSON.stringify(credentials));
+}
+
+function clearCredentials() {
+  sessionStorage.removeItem(ADMIN_CREDS_STORAGE);
+  // Clear legacy API-key storage if present
+  sessionStorage.removeItem('da_screen_admin_key');
+}
+
+function isAllowedAdminEmail(email) {
+  const normalized = String(email || '').trim().toLowerCase();
+  return ALLOWED_EMAIL_DOMAINS.some((domain) => normalized.endsWith(domain));
+}
 
 const STATUS_CLASS = {
   sent: 'status-sent',
@@ -107,8 +138,9 @@ function compareSortValues(aVal, bVal, dir) {
 }
 
 export default function AdminDashboard() {
-  const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem(ADMIN_KEY_STORAGE) || '');
-  const [keyInput, setKeyInput] = useState(adminKey);
+  const [credentials, setCredentials] = useState(() => readStoredCredentials());
+  const [emailInput, setEmailInput] = useState(() => credentials?.email || '');
+  const [passwordInput, setPasswordInput] = useState('');
   const [exams, setExams] = useState([]);
   const [selectedKey, setSelectedKey] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -127,6 +159,25 @@ export default function AdminDashboard() {
   const [formErrors, setFormErrors] = useState({});
   const [columnFilters, setColumnFilters] = useState(EMPTY_COLUMN_FILTERS);
   const [sort, setSort] = useState(DEFAULT_SORT);
+
+  function signOut() {
+    clearCredentials();
+    setCredentials(null);
+    setPasswordInput('');
+    setDetail(null);
+    setExams([]);
+    setSelectedKey(null);
+    setColumnFilters(EMPTY_COLUMN_FILTERS);
+    setSort(DEFAULT_SORT);
+  }
+
+  function handleAuthFailure(err) {
+    if (err instanceof ApiError && err.status === 401) {
+      signOut();
+      return true;
+    }
+    return false;
+  }
 
   const filtersActive = useMemo(
     () =>
@@ -161,51 +212,65 @@ export default function AdminDashboard() {
     });
   }, [exams, columnFilters, sort]);
 
-  async function loadExams(key = adminKey) {
-    if (!key) return;
+  async function loadExams(creds = credentials) {
+    if (!creds?.email || !creds?.password) return;
     setLoading(true);
     setError('');
     try {
-      const data = await adminListExams(key);
+      const data = await adminListExams(creds);
       setExams(data.exams || []);
     } catch (err) {
       setExams([]);
-      setError(err instanceof ApiError ? err.message : 'Failed to load exams');
-      if (err instanceof ApiError && (err.status === 401 || err.status === 503)) {
-        sessionStorage.removeItem(ADMIN_KEY_STORAGE);
-        setAdminKey('');
+      if (handleAuthFailure(err)) {
+        setError(err instanceof ApiError ? err.message : 'Session expired. Please sign in again.');
+        return;
       }
+      setError(err instanceof ApiError ? err.message : 'Failed to load exams');
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    if (adminKey) {
-      loadExams(adminKey);
+    if (credentials) {
+      loadExams(credentials);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminKey]);
+  }, [credentials]);
 
   async function handleLogin(event) {
     event.preventDefault();
-    const next = keyInput.trim();
-    if (!next) {
-      setError('Enter the admin API key');
+    setError('');
+    const email = emailInput.trim();
+    const password = passwordInput.trim();
+    if (!email || !password) {
+      setError('Enter your work email and password.');
       return;
     }
-    sessionStorage.setItem(ADMIN_KEY_STORAGE, next);
-    setAdminKey(next);
+    if (!isAllowedAdminEmail(email)) {
+      setError('Email must end with @mantech.com or @elderresearch.com.');
+      return;
+    }
+    try {
+      await adminLogin(email, password);
+      const next = { email, password };
+      storeCredentials(next);
+      setCredentials(next);
+      setPasswordInput('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Login failed');
+    }
   }
 
   async function handleCreate(event) {
     event.preventDefault();
+    if (!credentials) return;
     setCreateError('');
     setFormErrors({});
     setCreatedUrl('');
     setEmailOutcome(null);
     try {
-      const created = await adminCreateExam(adminKey, form);
+      const created = await adminCreateExam(credentials, form);
       setCreatedUrl(created.invite_url || '');
       setEmailOutcome({
         email_sent: Boolean(created.email_sent),
@@ -221,9 +286,13 @@ export default function AdminDashboard() {
       await loadExams();
       const detailKey = created.row_id || String(created.id);
       setSelectedKey(detailKey);
-      const detailData = await adminExamDetail(adminKey, detailKey);
+      const detailData = await adminExamDetail(credentials, detailKey);
       setDetail(detailData);
     } catch (err) {
+      if (handleAuthFailure(err)) {
+        setError(err instanceof ApiError ? err.message : 'Session expired. Please sign in again.');
+        return;
+      }
       if (err instanceof ApiError) {
         const fields =
           err.fields && typeof err.fields === 'object' ? { ...err.fields } : {};
@@ -241,13 +310,18 @@ export default function AdminDashboard() {
   }
 
   async function openDetail(rowKey) {
+    if (!credentials) return;
     setSelectedKey(rowKey);
     setError('');
     try {
-      const data = await adminExamDetail(adminKey, rowKey);
+      const data = await adminExamDetail(credentials, rowKey);
       setDetail(data);
     } catch (err) {
       setDetail(null);
+      if (handleAuthFailure(err)) {
+        setError(err instanceof ApiError ? err.message : 'Session expired. Please sign in again.');
+        return;
+      }
       setError(err instanceof ApiError ? err.message : 'Failed to load detail');
     }
   }
@@ -270,7 +344,7 @@ export default function AdminDashboard() {
     setSort(DEFAULT_SORT);
   }
 
-  if (!adminKey) {
+  if (!credentials) {
     return (
       <div className="page admin-page">
         <header className="brand-bar">
@@ -285,16 +359,28 @@ export default function AdminDashboard() {
         </header>
         <h1>Assessment Admin</h1>
         <p className="chooser-lead">
-          Sign in with the server <code>ADMIN_API_KEY</code> to track invites and review results.
+          Sign in with your <code>@mantech.com</code> or <code>@elderresearch.com</code> email.
+          Your password is your last name from that email (the part after the final{' '}
+          <code>.</code> before <code>@</code>), case-insensitive.
         </p>
         <form className="admin-login" onSubmit={handleLogin}>
-          <label htmlFor="admin-key">Admin API key</label>
+          <label htmlFor="admin-email">Work email</label>
           <input
-            id="admin-key"
+            id="admin-email"
+            type="email"
+            value={emailInput}
+            onChange={(event) => setEmailInput(event.target.value)}
+            autoComplete="username"
+            required
+          />
+          <label htmlFor="admin-password">Password</label>
+          <input
+            id="admin-password"
             type="password"
-            value={keyInput}
-            onChange={(event) => setKeyInput(event.target.value)}
+            value={passwordInput}
+            onChange={(event) => setPasswordInput(event.target.value)}
             autoComplete="current-password"
+            required
           />
           <button type="submit" className="btn-primary">
             Enter dashboard
@@ -316,19 +402,7 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="brand-actions">
-          <button
-            type="button"
-            className="brand-link"
-            onClick={() => {
-              sessionStorage.removeItem(ADMIN_KEY_STORAGE);
-              setAdminKey('');
-              setDetail(null);
-              setExams([]);
-              setSelectedKey(null);
-              setColumnFilters(EMPTY_COLUMN_FILTERS);
-              setSort(DEFAULT_SORT);
-            }}
-          >
+          <button type="button" className="brand-link" onClick={signOut}>
             Sign out
           </button>
           <span className="brand-pill">Admin</span>

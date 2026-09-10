@@ -5,15 +5,21 @@ from backend.tests.data import PERFECT_ANSWERS
 from backend.validation import normalize_phone
 
 
+ADMIN_EMAIL = "david.hoyt@mantech.com"
+ADMIN_PASSWORD = "hoyt"
+
+
 @pytest.fixture
-def admin_key(monkeypatch):
-    monkeypatch.setenv("ADMIN_API_KEY", "test-admin-key")
+def admin_headers(monkeypatch):
     monkeypatch.setenv("PUBLIC_APP_URL", "http://127.0.0.1:5173")
-    return "test-admin-key"
+    return {
+        "X-Admin-Email": ADMIN_EMAIL,
+        "X-Admin-Password": ADMIN_PASSWORD,
+    }
 
 
-def _create_invite(client, admin_key, **overrides):
-    headers = {"X-Admin-Key": admin_key}
+def _create_invite(client, admin_headers, **overrides):
+    headers = admin_headers
     payload = {
         "name": "Pat Candidate",
         "email": "pat@example.com",
@@ -27,8 +33,8 @@ def _create_invite(client, admin_key, **overrides):
     return created.json()
 
 
-def test_patch_candidate_partial_update(client, admin_key):
-    invite = _create_invite(client, admin_key)
+def test_patch_candidate_partial_update(client, admin_headers):
+    invite = _create_invite(client, admin_headers)
     token = invite["token"]
     original_recruiter = invite["recruiter_email"]
     original_phone = invite["phone"]
@@ -77,17 +83,17 @@ def test_patch_candidate_partial_update(client, admin_key):
         session.close()
 
 
-def test_patch_candidate_phone_collision(client, admin_key):
+def test_patch_candidate_phone_collision(client, admin_headers):
     first = _create_invite(
         client,
-        admin_key,
+        admin_headers,
         name="First Candidate",
         email="first@example.com",
         phone="5551000001",
     )
     _create_invite(
         client,
-        admin_key,
+        admin_headers,
         name="Second Candidate",
         email="second@example.com",
         phone="5551000002",
@@ -109,7 +115,7 @@ def test_patch_candidate_phone_collision(client, admin_key):
     assert same.json()["phone"] == "5551000001"
 
 
-def test_patch_candidate_missing_token(client, admin_key):
+def test_patch_candidate_missing_token(client, admin_headers):
     response = client.patch(
         "/api/invite/does-not-exist-token/candidate",
         json={"name": "Nobody"},
@@ -118,8 +124,8 @@ def test_patch_candidate_missing_token(client, admin_key):
     assert "not found" in response.json()["error"].lower()
 
 
-def test_patch_candidate_completed_invite(client, admin_key):
-    invite = _create_invite(client, admin_key)
+def test_patch_candidate_completed_invite(client, admin_headers):
+    invite = _create_invite(client, admin_headers)
     token = invite["token"]
 
     submit = client.post(
@@ -144,8 +150,8 @@ def test_patch_candidate_completed_invite(client, admin_key):
     assert "completed" in response.json()["error"].lower()
 
 
-def test_patch_candidate_empty_body(client, admin_key):
-    invite = _create_invite(client, admin_key)
+def test_patch_candidate_empty_body(client, admin_headers):
+    invite = _create_invite(client, admin_headers)
     response = client.patch(f"/api/invite/{invite['token']}/candidate", json={})
     assert response.status_code == 400
     assert "name" in response.json()["error"].lower() or "required" in response.json()[

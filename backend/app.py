@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend import assessments, emailer, invites, persistence
-from backend.admin_auth import require_admin
+from backend.admin_auth import require_admin, verify_admin_login
 from backend.database import init_db
 from backend.timing import extract_timing, parse_iso_datetime
 from backend.validation import is_valid_email, is_valid_name, is_valid_phone, normalize_phone
@@ -260,12 +260,28 @@ def patch_invite_candidate(token: str, payload: dict = Body(default=None)):
     return data
 
 
+@app.post("/api/admin/login")
+def admin_login(payload: dict = Body(default=None)):
+    if payload is None:
+        payload = {}
+    ok, normalized_email, auth_error = verify_admin_login(
+        payload.get("email"),
+        payload.get("password"),
+    )
+    if not ok:
+        return auth_error
+    return {"ok": True, "email": normalized_email}
+
+
 @app.get("/api/admin/exams")
 def admin_list_exams(
-    x_admin_key: Optional[str] = Header(default=None, alias="X-Admin-Key"),
-    admin_key: Optional[str] = Query(default=None),
+    x_admin_email: Optional[str] = Header(default=None, alias="X-Admin-Email"),
+    x_admin_password: Optional[str] = Header(default=None, alias="X-Admin-Password"),
 ):
-    auth_error = require_admin(x_admin_key=x_admin_key, admin_key=admin_key)
+    auth_error = require_admin(
+        x_admin_email=x_admin_email,
+        x_admin_password=x_admin_password,
+    )
     if auth_error is not None:
         return auth_error
     rows = invites.list_exams(public_app_url=_public_app_url())
@@ -275,10 +291,13 @@ def admin_list_exams(
 @app.post("/api/admin/exams")
 def admin_create_exam(
     payload: dict = Body(default=None),
-    x_admin_key: Optional[str] = Header(default=None, alias="X-Admin-Key"),
-    admin_key: Optional[str] = Query(default=None),
+    x_admin_email: Optional[str] = Header(default=None, alias="X-Admin-Email"),
+    x_admin_password: Optional[str] = Header(default=None, alias="X-Admin-Password"),
 ):
-    auth_error = require_admin(x_admin_key=x_admin_key, admin_key=admin_key)
+    auth_error = require_admin(
+        x_admin_email=x_admin_email,
+        x_admin_password=x_admin_password,
+    )
     if auth_error is not None:
         return auth_error
     if payload is None:
@@ -348,10 +367,13 @@ def admin_create_exam(
 @app.get("/api/admin/exams/{exam_key}")
 def admin_exam_detail(
     exam_key: str,
-    x_admin_key: Optional[str] = Header(default=None, alias="X-Admin-Key"),
-    admin_key: Optional[str] = Query(default=None),
+    x_admin_email: Optional[str] = Header(default=None, alias="X-Admin-Email"),
+    x_admin_password: Optional[str] = Header(default=None, alias="X-Admin-Password"),
 ):
-    auth_error = require_admin(x_admin_key=x_admin_key, admin_key=admin_key)
+    auth_error = require_admin(
+        x_admin_email=x_admin_email,
+        x_admin_password=x_admin_password,
+    )
     if auth_error is not None:
         return auth_error
     detail = invites.get_exam_detail(exam_key, public_app_url=_public_app_url())

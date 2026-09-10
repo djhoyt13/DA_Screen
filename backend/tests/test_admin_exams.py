@@ -4,21 +4,27 @@ import pytest
 from backend.tests.data import PERFECT_ANSWERS, VALID_CANDIDATE
 
 
+ADMIN_EMAIL = "david.hoyt@mantech.com"
+ADMIN_PASSWORD = "hoyt"
+
+
 @pytest.fixture
-def admin_key(monkeypatch):
-    monkeypatch.setenv("ADMIN_API_KEY", "test-admin-key")
+def admin_headers(monkeypatch):
     monkeypatch.setenv("PUBLIC_APP_URL", "http://127.0.0.1:5173")
-    return "test-admin-key"
+    return {
+        "X-Admin-Email": ADMIN_EMAIL,
+        "X-Admin-Password": ADMIN_PASSWORD,
+    }
 
 
-def test_admin_requires_key(client, monkeypatch):
-    monkeypatch.delenv("ADMIN_API_KEY", raising=False)
+def test_admin_requires_credentials(client):
     response = client.get("/api/admin/exams")
-    assert response.status_code == 503
+    assert response.status_code == 401
+    assert "error" in response.json()
 
 
-def test_admin_create_open_ack_complete_flow(client, admin_key, mock_send_invite_email):
-    headers = {"X-Admin-Key": admin_key}
+def test_admin_create_open_ack_complete_flow(client, admin_headers, mock_send_invite_email):
+    headers = admin_headers
 
     created = client.post(
         "/api/admin/exams",
@@ -96,8 +102,8 @@ def test_admin_create_open_ack_complete_flow(client, admin_key, mock_send_invite
     assert by_row_id.json()["id"] == invite_id
 
 
-def test_admin_create_requires_phone_and_recruiter(client, admin_key):
-    headers = {"X-Admin-Key": admin_key}
+def test_admin_create_requires_phone_and_recruiter(client, admin_headers):
+    headers = admin_headers
     missing_phone = client.post(
         "/api/admin/exams",
         headers=headers,
@@ -125,8 +131,8 @@ def test_admin_create_requires_phone_and_recruiter(client, admin_key):
     assert "recruiter_email" in missing_recruiter.json()["fields"]
 
 
-def test_admin_create_duplicate_incomplete_phone(client, admin_key, mock_send_invite_email):
-    headers = {"X-Admin-Key": admin_key}
+def test_admin_create_duplicate_incomplete_phone(client, admin_headers, mock_send_invite_email):
+    headers = admin_headers
     payload = {
         "name": "First Candidate",
         "email": "first@example.com",
@@ -151,8 +157,8 @@ def test_admin_create_duplicate_incomplete_phone(client, admin_key, mock_send_in
     assert "phone" in second.json()["fields"]
 
 
-def test_admin_create_allows_reinvite_after_complete(client, admin_key, mock_send_invite_email):
-    headers = {"X-Admin-Key": admin_key}
+def test_admin_create_allows_reinvite_after_complete(client, admin_headers, mock_send_invite_email):
+    headers = admin_headers
     created = client.post(
         "/api/admin/exams",
         headers=headers,
@@ -194,8 +200,8 @@ def test_admin_create_allows_reinvite_after_complete(client, admin_key, mock_sen
     assert again.json()["email_sent"] is True
 
 
-def test_admin_create_smtp_failure_still_200(client, admin_key, mock_send_invite_email):
-    headers = {"X-Admin-Key": admin_key}
+def test_admin_create_smtp_failure_still_200(client, admin_headers, mock_send_invite_email):
+    headers = admin_headers
     mock_send_invite_email.return_value = (
         False,
         "Email sending failed: smtp down. Invite saved; email not sent.",
@@ -219,8 +225,8 @@ def test_admin_create_smtp_failure_still_200(client, admin_key, mock_send_invite
     assert body["invite_url"]
 
 
-def test_admin_list_includes_orphan_submission(client, admin_key, mock_send_email):
-    headers = {"X-Admin-Key": admin_key}
+def test_admin_list_includes_orphan_submission(client, admin_headers, mock_send_email):
+    headers = admin_headers
 
     submit = client.post(
         "/api/submit",
@@ -266,8 +272,8 @@ def test_admin_list_includes_orphan_submission(client, admin_key, mock_send_emai
     assert len(detail_body["results"]["detailed_results"]) == total
 
 
-def test_admin_linked_submission_not_duplicated(client, admin_key, mock_send_email):
-    headers = {"X-Admin-Key": admin_key}
+def test_admin_linked_submission_not_duplicated(client, admin_headers, mock_send_email):
+    headers = admin_headers
 
     created = client.post(
         "/api/admin/exams",
@@ -313,7 +319,7 @@ def test_admin_linked_submission_not_duplicated(client, admin_key, mock_send_ema
 
 
 def test_submit_with_invite_upserts_edited_contact_fields(
-    client, admin_key, mock_send_email, mock_send_invite_email
+    client, admin_headers, mock_send_email, mock_send_invite_email
 ):
     """Edited name/email/phone on submit update both submission and invite rows."""
     from backend.database import get_session
@@ -321,7 +327,7 @@ def test_submit_with_invite_upserts_edited_contact_fields(
     from backend.models_invites import ExamInvite
     from backend.validation import normalize_phone
 
-    headers = {"X-Admin-Key": admin_key}
+    headers = admin_headers
     original_recruiter = "recruiter@example.com"
     created = client.post(
         "/api/admin/exams",
@@ -385,10 +391,10 @@ def test_submit_with_invite_upserts_edited_contact_fields(
 
 
 def test_submit_with_invite_rejects_phone_on_other_incomplete(
-    client, admin_key, mock_send_email, mock_send_invite_email
+    client, admin_headers, mock_send_email, mock_send_invite_email
 ):
     """Edited phone colliding with another incomplete invite → 400 fields.phone."""
-    headers = {"X-Admin-Key": admin_key}
+    headers = admin_headers
 
     first = client.post(
         "/api/admin/exams",
@@ -438,6 +444,12 @@ def test_submit_with_invite_rejects_phone_on_other_incomplete(
     assert detail.json()["submission_id"] is None
 
 
-def test_admin_unauthorized(client, admin_key):
-    response = client.get("/api/admin/exams", headers={"X-Admin-Key": "wrong"})
+def test_admin_unauthorized(client, admin_headers):
+    response = client.get(
+        "/api/admin/exams",
+        headers={
+            "X-Admin-Email": ADMIN_EMAIL,
+            "X-Admin-Password": "wrong",
+        },
+    )
     assert response.status_code == 401

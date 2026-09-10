@@ -114,11 +114,33 @@ export async function submitQuiz(payload) {
   return data;
 }
 
-function adminHeaders(adminKey) {
+function adminHeaders({ email, password }) {
   return {
     'Content-Type': 'application/json',
-    'X-Admin-Key': adminKey,
+    'X-Admin-Email': email,
+    'X-Admin-Password': password,
   };
+}
+
+export async function adminLogin(email, password) {
+  const url = `${getApiBase()}/api/admin/login`;
+  const response = await fetchWithTimeout(
+    url,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    },
+    8000
+  );
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new ApiError(data.error || `Login failed (${response.status}).`, {
+      status: response.status,
+      fields: data.fields,
+    });
+  }
+  return data;
 }
 
 export async function fetchInvite(token) {
@@ -206,11 +228,11 @@ export async function markInviteAcknowledged(token, acknowledgedAt) {
   return data;
 }
 
-export async function adminListExams(adminKey) {
+export async function adminListExams(credentials) {
   const url = `${getApiBase()}/api/admin/exams`;
   const response = await fetchWithTimeout(
     url,
-    { method: 'GET', headers: adminHeaders(adminKey) },
+    { method: 'GET', headers: adminHeaders(credentials) },
     8000
   );
   const data = await parseJson(response);
@@ -223,13 +245,13 @@ export async function adminListExams(adminKey) {
   return data;
 }
 
-export async function adminCreateExam(adminKey, payload) {
+export async function adminCreateExam(credentials, payload) {
   const url = `${getApiBase()}/api/admin/exams`;
   const response = await fetchWithTimeout(
     url,
     {
       method: 'POST',
-      headers: adminHeaders(adminKey),
+      headers: adminHeaders(credentials),
       body: JSON.stringify(payload),
     },
     8000
@@ -244,11 +266,11 @@ export async function adminCreateExam(adminKey, payload) {
   return data;
 }
 
-export async function adminExamDetail(adminKey, examKey) {
+export async function adminExamDetail(credentials, examKey) {
   const url = `${getApiBase()}/api/admin/exams/${encodeURIComponent(examKey)}`;
   const response = await fetchWithTimeout(
     url,
-    { method: 'GET', headers: adminHeaders(adminKey) },
+    { method: 'GET', headers: adminHeaders(credentials) },
     8000
   );
   const data = await parseJson(response);
