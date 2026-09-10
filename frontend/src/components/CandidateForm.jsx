@@ -164,9 +164,10 @@ export default function CandidateForm({
           const alwaysLocked = inviteMode && field.lockedInInvite;
           const inviteIdleLocked =
             inviteMode && EDITABLE_INVITE_FIELDS.has(field.name) && !isEditing;
-          const fieldLocked = alwaysLocked || inviteIdleLocked || (inviteMode && examLocked);
+          const fieldLocked =
+            alwaysLocked || inviteIdleLocked || (inviteMode && examLocked) || disabled;
           const fieldDisabled = inviteMode
-            ? fieldLocked || !isEditing
+            ? fieldLocked || !isEditing || disabled
             : disabled;
           const showAction =
             inviteMode && EDITABLE_INVITE_FIELDS.has(field.name);
@@ -175,6 +176,7 @@ export default function CandidateForm({
           const isDirty = current.trim() !== String(baseline).trim();
           const isSaving = savingField === field.name;
           const actionDisabled =
+            disabled ||
             examLocked ||
             Boolean(savingField) ||
             (isEditing && (!isDirty || !current.trim()));

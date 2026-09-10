@@ -324,33 +324,20 @@ export default function App({ assessmentId = 'ds', onChangeAssessment }) {
         <p className="ack-hint">Check the box above to begin the assessment.</p>
       ) : null}
 
-      {inviteToken ? (
-        <CandidateForm
-          values={candidate}
-          errors={fieldErrors}
-          onChange={handleCandidateChange}
-          disabled={false}
-          examLocked={locked}
-          inviteMode
-          onSaveInviteField={handleSaveInviteField}
-        />
-      ) : null}
-
       <div
         className={
           !statementAcknowledged && !submitted && !inviteCompleted ? 'assessment-gated' : undefined
         }
       >
-        {!inviteToken ? (
-          <CandidateForm
-            values={candidate}
-            errors={fieldErrors}
-            onChange={handleCandidateChange}
-            disabled={!assessmentOpen}
-            examLocked={locked}
-            inviteMode={false}
-          />
-        ) : null}
+        <CandidateForm
+          values={candidate}
+          errors={fieldErrors}
+          onChange={handleCandidateChange}
+          disabled={!assessmentOpen}
+          examLocked={locked}
+          inviteMode={Boolean(inviteToken)}
+          onSaveInviteField={inviteToken ? handleSaveInviteField : undefined}
+        />
 
         {loading ? <p className="status-copy">Loading questions…</p> : null}
         {loadError ? <div className="error-msg">{loadError}</div> : null}
