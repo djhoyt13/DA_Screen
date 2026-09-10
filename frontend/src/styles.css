@@ -933,7 +933,7 @@ input[type="text"]:disabled,
 
 .admin-table-wrap {
   overflow: auto;
-  max-height: 28.5rem; /* header + filter row + ~4 exam records */
+  max-height: 23rem; /* header + filter row + ~3 exam records */
   border: 1px solid var(--mt-border);
   border-radius: var(--mt-radius);
   background: var(--mt-panel);
