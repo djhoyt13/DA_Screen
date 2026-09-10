@@ -457,7 +457,7 @@ p {
   margin-top: 1rem;
 }
 
-.candidate-info.is-invite-locked input[type="text"] {
+.candidate-info.is-invite-mode .field.is-field-locked input[type="text"] {
   opacity: 0.85;
   cursor: default;
   color: var(--mt-text-soft);

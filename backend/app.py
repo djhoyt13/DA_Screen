@@ -298,6 +298,17 @@ def submit_quiz(payload: dict = Body(default=None)):
         phone = _as_str(payload.get("phone")).strip()
         recruiter_email = _as_str(payload.get("recruiter_email")).strip()
         invite_token = _as_str(payload.get("invite_token")).strip()
+        phone_normalized = normalize_phone(phone)
+
+        if invite_token and invites.has_incomplete_invite_for_phone(
+            phone_normalized, exclude_token=invite_token
+        ):
+            return _validation_error(
+                {
+                    "phone": "An incomplete invite already exists for this phone number",
+                }
+            )
+
         raw_answers = payload.get("answers") or {}
         answers = {}
         for key in assessments.question_keys_for(assessment_id):
@@ -332,6 +343,10 @@ def submit_quiz(payload: dict = Body(default=None)):
                 invite_token,
                 submission_id=submission_id,
                 completed_at=submitted_at,
+                name=name,
+                email=email,
+                phone=phone,
+                phone_normalized=phone_normalized,
             )
 
         email_sent, email_warning = emailer.send_results_email(

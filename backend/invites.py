@@ -168,19 +168,25 @@ def create_invite(
         session.close()
 
 
-def has_incomplete_invite_for_phone(phone_normalized):
-    """True if an incomplete invite already uses this normalized phone."""
+def has_incomplete_invite_for_phone(phone_normalized, exclude_token=None):
+    """True if an incomplete invite already uses this normalized phone.
+
+    When ``exclude_token`` is set (e.g. the invite being submitted), that row is
+    ignored so a candidate can keep or re-submit their own phone.
+    """
     if not phone_normalized:
         return False
     session = get_session()
     try:
-        invite = (
+        query = (
             session.query(ExamInvite)
             .filter(ExamInvite.phone_normalized == phone_normalized)
             .filter(ExamInvite.completed_at.is_(None))
             .filter(ExamInvite.submission_id.is_(None))
-            .first()
         )
+        if exclude_token:
+            query = query.filter(ExamInvite.token != str(exclude_token).strip())
+        invite = query.first()
         return invite is not None
     finally:
         session.close()
@@ -303,7 +309,19 @@ def mark_acknowledged(token, acknowledged_at=None):
         session.close()
 
 
-def mark_completed(token, submission_id, completed_at=None):
+def mark_completed(
+    token,
+    submission_id,
+    completed_at=None,
+    name=None,
+    email=None,
+    phone=None,
+    phone_normalized=None,
+):
+    """Mark invite completed and optionally upsert candidate contact fields.
+
+    Does not overwrite ``recruiter_email`` — that stays recruiter-provided.
+    """
     if not token:
         return None
     session = get_session()
@@ -322,6 +340,14 @@ def mark_completed(token, submission_id, completed_at=None):
             invite.opened_at = now
         if invite.acknowledged_at is None:
             invite.acknowledged_at = now
+        if name is not None:
+            invite.name = name
+        if email is not None:
+            invite.email = email
+        if phone is not None:
+            invite.phone = phone or None
+        if phone_normalized is not None:
+            invite.phone_normalized = phone_normalized or None
         session.commit()
         session.refresh(invite)
         return invite_to_dict(invite)

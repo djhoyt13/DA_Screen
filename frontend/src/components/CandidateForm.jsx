@@ -3,31 +3,39 @@ export default function CandidateForm({
   errors,
   onChange,
   disabled,
-  inviteLocked = false,
+  inviteMode = false,
 }) {
   const fields = [
     { name: 'name', label: 'Your name:', autoComplete: 'name' },
     { name: 'email', label: 'Your email:', autoComplete: 'email' },
     { name: 'phone', label: 'Your phone number:', autoComplete: 'tel' },
-    { name: 'recruiter_email', label: "Recruiter's Email:", autoComplete: 'email' },
+    {
+      name: 'recruiter_email',
+      label: "Recruiter's Email:",
+      autoComplete: 'email',
+      lockedInInvite: true,
+    },
   ];
 
   return (
     <section className="candidate-section">
       <h2>Candidate Information</h2>
-      {inviteLocked ? (
+      {inviteMode ? (
         <p className="invite-locked-note">
-          Your details were provided by your recruiter and do not need to be edited.
+          Details were provided by your recruiter and may be corrected if needed.
         </p>
       ) : null}
-      <div className={`candidate-info${inviteLocked ? ' is-invite-locked' : ''}`}>
+      <div className={`candidate-info${inviteMode ? ' is-invite-mode' : ''}`}>
         {fields.map((field) => {
           const error = errors[field.name];
-          const fieldDisabled = disabled || inviteLocked;
+          const fieldLocked = inviteMode && field.lockedInInvite;
+          const fieldDisabled = disabled || fieldLocked;
           return (
             <div
               key={field.name}
-              className={`field${error ? ' invalid-input' : ''}`}
+              className={`field${error ? ' invalid-input' : ''}${
+                fieldLocked ? ' is-field-locked' : ''
+              }`}
             >
               <label htmlFor={field.name}>{field.label}</label>
               <input
@@ -38,8 +46,8 @@ export default function CandidateForm({
                 value={values[field.name] || ''}
                 onChange={(event) => onChange(field.name, event.target.value)}
                 disabled={fieldDisabled}
-                readOnly={inviteLocked}
-                aria-readonly={inviteLocked || undefined}
+                readOnly={fieldLocked}
+                aria-readonly={fieldLocked || undefined}
               />
               {error ? <div className="field-error">{error}</div> : null}
             </div>

@@ -312,6 +312,132 @@ def test_admin_linked_submission_not_duplicated(client, admin_key, mock_send_ema
     assert dupes == []
 
 
+def test_submit_with_invite_upserts_edited_contact_fields(
+    client, admin_key, mock_send_email, mock_send_invite_email
+):
+    """Edited name/email/phone on submit update both submission and invite rows."""
+    from backend.database import get_session
+    from backend.models import Submission
+    from backend.models_invites import ExamInvite
+    from backend.validation import normalize_phone
+
+    headers = {"X-Admin-Key": admin_key}
+    original_recruiter = "recruiter@example.com"
+    created = client.post(
+        "/api/admin/exams",
+        headers=headers,
+        json={
+            "name": "Original Name",
+            "email": "original@example.com",
+            "phone": "5551112222",
+            "recruiter_email": original_recruiter,
+            "assessment": "ds",
+        },
+    )
+    assert created.status_code == 200
+    token = created.json()["token"]
+    invite_id = created.json()["id"]
+
+    edited = {
+        "name": "Edited Name",
+        "email": "edited@example.com",
+        "phone": "(555) 333-4444",
+        "recruiter_email": "other-recruiter@example.com",
+    }
+    submit = client.post(
+        "/api/submit",
+        json={
+            **edited,
+            "assessment": "ds",
+            "invite_token": token,
+            "answers": PERFECT_ANSWERS,
+        },
+    )
+    assert submit.status_code == 200
+
+    detail = client.get(f"/api/admin/exams/invite-{invite_id}", headers=headers)
+    assert detail.status_code == 200
+    invite_body = detail.json()
+    assert invite_body["name"] == "Edited Name"
+    assert invite_body["email"] == "edited@example.com"
+    assert invite_body["phone"] == "(555) 333-4444"
+    assert invite_body["recruiter_email"] == original_recruiter
+    assert invite_body["status"] == "completed"
+    submission_id = invite_body["submission_id"]
+    assert submission_id is not None
+
+    session = get_session()
+    try:
+        submission = session.get(Submission, submission_id)
+        assert submission.name == "Edited Name"
+        assert submission.email == "edited@example.com"
+        assert submission.phone == "(555) 333-4444"
+        assert submission.recruiter_email == "other-recruiter@example.com"
+
+        invite_row = session.get(ExamInvite, invite_id)
+        assert invite_row.name == "Edited Name"
+        assert invite_row.email == "edited@example.com"
+        assert invite_row.phone == "(555) 333-4444"
+        assert invite_row.phone_normalized == normalize_phone("(555) 333-4444")
+        assert invite_row.recruiter_email == original_recruiter
+    finally:
+        session.close()
+
+
+def test_submit_with_invite_rejects_phone_on_other_incomplete(
+    client, admin_key, mock_send_email, mock_send_invite_email
+):
+    """Edited phone colliding with another incomplete invite → 400 fields.phone."""
+    headers = {"X-Admin-Key": admin_key}
+
+    first = client.post(
+        "/api/admin/exams",
+        headers=headers,
+        json={
+            "name": "First Candidate",
+            "email": "first@example.com",
+            "phone": "5551000001",
+            "recruiter_email": "recruiter@example.com",
+            "assessment": "ds",
+        },
+    )
+    assert first.status_code == 200
+    token = first.json()["token"]
+
+    second = client.post(
+        "/api/admin/exams",
+        headers=headers,
+        json={
+            "name": "Second Candidate",
+            "email": "second@example.com",
+            "phone": "5551000002",
+            "recruiter_email": "recruiter@example.com",
+            "assessment": "ds",
+        },
+    )
+    assert second.status_code == 200
+
+    submit = client.post(
+        "/api/submit",
+        json={
+            "name": "First Candidate",
+            "email": "first@example.com",
+            "phone": "5551000002",
+            "recruiter_email": "recruiter@example.com",
+            "assessment": "ds",
+            "invite_token": token,
+            "answers": PERFECT_ANSWERS,
+        },
+    )
+    assert submit.status_code == 400
+    assert "phone" in submit.json()["fields"]
+
+    # Original invite must still be incomplete
+    detail = client.get(f"/api/admin/exams/invite-{first.json()['id']}", headers=headers)
+    assert detail.json()["status"] != "completed"
+    assert detail.json()["submission_id"] is None
+
+
 def test_admin_unauthorized(client, admin_key):
     response = client.get("/api/admin/exams", headers={"X-Admin-Key": "wrong"})
     assert response.status_code == 401
