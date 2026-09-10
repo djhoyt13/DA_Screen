@@ -30,6 +30,7 @@ const ASSESSMENT_FILTER_OPTIONS = [
 ];
 
 const EMPTY_COLUMN_FILTERS = {
+  candidate: '',
   assessment: '',
   status: '',
 };
@@ -37,7 +38,7 @@ const EMPTY_COLUMN_FILTERS = {
 const DEFAULT_SORT = { key: 'sent', dir: 'desc' };
 
 const TABLE_COLUMNS = [
-  { key: 'candidate', label: 'Candidate', mode: 'sort' },
+  { key: 'candidate', label: 'Candidate', mode: 'sort', filter: 'candidate' },
   { key: 'assessment', label: 'Assessment', mode: 'filter', filter: 'assessment' },
   { key: 'status', label: 'Status', mode: 'filter', filter: 'status' },
   { key: 'sent', label: 'Sent', mode: 'sort' },
@@ -129,14 +130,21 @@ export default function AdminDashboard() {
 
   const filtersActive = useMemo(
     () =>
-      Object.values(columnFilters).some((value) => value !== '') ||
+      Object.values(columnFilters).some((value) => String(value).trim() !== '') ||
       sort.key !== DEFAULT_SORT.key ||
       sort.dir !== DEFAULT_SORT.dir,
     [columnFilters, sort]
   );
 
   const filtered = useMemo(() => {
+    const candidateNeedle = columnFilters.candidate.trim().toLowerCase();
     const rows = exams.filter((exam) => {
+      if (candidateNeedle) {
+        const haystack = `${exam.name || ''} ${exam.email || ''} ${exam.phone || ''}`.toLowerCase();
+        if (!haystack.includes(candidateNeedle)) {
+          return false;
+        }
+      }
       if (columnFilters.assessment && exam.assessment !== columnFilters.assessment) {
         return false;
       }
@@ -485,6 +493,22 @@ export default function AdminDashboard() {
               </tr>
               <tr className="admin-filter-row">
                 {TABLE_COLUMNS.map((column) => {
+                  if (column.filter === 'candidate') {
+                    return (
+                      <th key={`${column.key}-filter`}>
+                        <input
+                          type="search"
+                          className="admin-col-filter"
+                          placeholder="Search…"
+                          aria-label="Search candidate"
+                          value={columnFilters.candidate}
+                          onChange={(event) =>
+                            updateColumnFilter('candidate', event.target.value)
+                          }
+                        />
+                      </th>
+                    );
+                  }
                   if (column.filter === 'assessment') {
                     return (
                       <th key={`${column.key}-filter`}>
